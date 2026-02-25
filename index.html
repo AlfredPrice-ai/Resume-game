@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>8-Bit Alfred — Resume Adventure</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div id="scan"></div>
+
+  <!-- TITLE -->
+  <div class="screen" id="scr-start">
+    <h1>8-BIT ALFRED</h1>
+    <div class="sub">
+      INTERACTIVE RESUME ADVENTURE<br>
+      ─────────────────────────────<br>
+      Alfred R. Price · MA, CSM, CSPO<br>
+      Business Analyst Consultant<br>
+      ─────────────────────────────<br>
+      ← → MOVE &nbsp;|&nbsp; SPACE / ↑ JUMP<br>
+      Hit ❓ blocks for resume facts!
+    </div>
+    <button class="btn" onclick="startGame()">▶ PRESS START</button>
+    <div style="margin-top:18px;font-size:7px;color:#444;">4 LEVELS · 20 RESUME FACTS · LINCOLN-STYLE ADVENTURE</div>
+  </div>
+
+  <!-- GAME OVER -->
+  <div class="screen off" id="scr-over">
+    <h1 style="color:#ff6b6b">GAME OVER</h1>
+    <div class="sub">Even the best consultants<br>need a second chance!</div>
+    <button class="btn" onclick="restartGame()">↺ TRY AGAIN</button>
+  </div>
+
+  <!-- WIN -->
+  <div class="screen off" id="scr-win">
+    <h1>YOU WIN! 🎉</h1>
+    <div class="sub">
+      You've completed Alfred's career journey!<br>
+      ─────────────────────────────────────────<br>
+      <span id="win-stats"></span>
+    </div>
+    <button class="btn ln" onclick="window.open('https://www.linkedin.com/in/alfredrprice/','_blank')">
+      🔗 Connect on LinkedIn
+    </button>
+    <button class="btn" onclick="restartGame()" style="margin-top:8px">↺ PLAY AGAIN</button>
+  </div>
+
+  <!-- GAME -->
+  <div id="game-wrap" style="display:none">
+    <div id="wrap">
+      <div id="hud">
+        <span>♥ <span id="h-lives">3</span></span>
+        <span id="h-level">LEVEL 1</span>
+        <span>★ <span id="h-score">0</span> / <span id="h-total">5</span></span>
+      </div>
+      <canvas id="canvas" width="900" height="480"></canvas>
+      <div id="ctrls">
+        <span>← → MOVE &nbsp; SPACE / ↑ JUMP</span>
+        <span>Hit ❓ blocks to learn about Alfred!</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="mbtns">
+    <button class="mbtn" id="mb-left" onpointerdown="mkeys.left=true" onpointerup="mkeys.left=false">◀</button>
+    <button class="mbtn" id="mb-jump" onpointerdown="doJump()">▲</button>
+    <button class="mbtn" id="mb-right" onpointerdown="mkeys.right=true" onpointerup="mkeys.right=false">▶</button>
+  </div>
+
+  <div id="popup">
+    <div class="ptitle" id="ptitle"></div>
+    <div id="ptext"></div>
+  </div>
+  <div id="banner">
+    <div id="btitle"></div>
+    <div class="bsub" id="bsub"></div>
+  </div>
+
+  <script src="sprites.js"></script>
+  <script src="game.js"></script>
+</body>
+
+</html>

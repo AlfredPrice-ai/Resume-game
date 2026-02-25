@@ -4,9 +4,48 @@
 const imgs = {};
 let imgsLoaded = 0;
 const imgKeys = Object.keys(SPRITES);
+
+function removeBg(originalImg) {
+    const c = document.createElement('canvas');
+    c.width = originalImg.width;
+    c.height = originalImg.height;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(originalImg, 0, 0);
+    const id = ctx.getImageData(0, 0, c.width, c.height);
+    const d = id.data;
+
+    // The checkered background is roughly:
+    // Color 1: #e9e2d3 (r: 233, g: 226, b: 211)
+    // Color 2: #d2bfaf (r: 210, g: 191, b: 175)
+    // We filter anything close to these light tan colors based on brightness
+
+    for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i + 1], b = d[i + 2];
+        const isTan1 = Math.abs(r - 235) < 35 && Math.abs(g - 225) < 35 && Math.abs(b - 205) < 35;
+        const isTan2 = Math.abs(r - 210) < 35 && Math.abs(g - 190) < 35 && Math.abs(b - 170) < 35;
+        // The little star watermark in the corner (white/gray)
+        const isStar = r > 230 && g > 230 && b > 230;
+
+        if (isTan1 || isTan2 || isStar) {
+            d[i + 3] = 0; // set alpha to transparent
+        }
+    }
+    ctx.putImageData(id, 0, 0);
+    const newImg = new Image();
+    newImg.onload = () => { imgsLoaded++; };
+    newImg.src = c.toDataURL();
+    return newImg;
+}
+
 imgKeys.forEach(k => {
     const i = new Image();
-    i.onload = () => { imgsLoaded++; };
+    i.onload = () => {
+        if (k.startsWith('percy')) {
+            imgs[k] = removeBg(i);
+        } else {
+            imgsLoaded++;
+        }
+    };
     i.src = SPRITES[k];
     imgs[k] = i;
 });
@@ -76,7 +115,8 @@ const W = canvas.width, H = canvas.height;
 
 let gameState = 'idle';
 let lvlIdx = 0, lives = 3, totalFacts = 0;
-let player, platforms, qblocks, enemies, coins, particles, flagpole;
+let player, platforms, qblocks, enemies, coins, percys, flagpole;
+let particles = [];
 let camera = { x: 0 };
 let keys = {}, mkeys = { left: false, right: false };
 let animT = 0, animF = 0;
@@ -85,7 +125,7 @@ let jumpReq = false;
 
 // Sprite animation map
 const ANIM = {
-    idle: ['idle2', 'idle1'],
+    idle: ['idle2'], // stand still instead of waving
     run: ['run1', 'run2'],
     jump: ['jump'],
     celebrate: ['celebrate', 'jump'],
@@ -115,14 +155,8 @@ function initLevel(idx) {
     const GY = H - 80; // ground top Y
 
     platforms = [
-        // Ground — with gaps
-        { x: 0, y: GY, w: 380, h: 80, t: 'g' },
-        { x: 460, y: GY, w: 320, h: 80, t: 'g' },
-        { x: 860, y: GY, w: 380, h: 80, t: 'g' },
-        { x: 1320, y: GY, w: 360, h: 80, t: 'g' },
-        { x: 1760, y: GY, w: 420, h: 80, t: 'g' },
-        { x: 2270, y: GY, w: 380, h: 80, t: 'g' },
-        { x: 2730, y: GY, w: 400, h: 80, t: 'g' },
+        // Continuous Ground
+        { x: 0, y: GY, w: 3200, h: 80, t: 'g' },
 
         // Step platforms — lots to jump on
         { x: 200, y: GY - 110, w: 110, h: 20, t: 'b' },
@@ -151,12 +185,15 @@ function initLevel(idx) {
     ];
 
     // ❓ Question blocks — 5 per level, 1 fact each
+    qblocks = [];
+    let bx = 240; // Starting x for the first block
+    const qblockYOffset = 40; // How much higher to raise them
     const qpositions = [
-        { x: 240, y: GY - 200 },
-        { x: 700, y: GY - 240 },
-        { x: 1100, y: GY - 260 },
-        { x: 1700, y: GY - 210 },
-        { x: 2200, y: GY - 180 },
+        { x: 240, y: GY - 200 - qblockYOffset },
+        { x: 700, y: GY - 240 - qblockYOffset },
+        { x: 1100, y: GY - 260 - qblockYOffset },
+        { x: 1700, y: GY - 210 - qblockYOffset },
+        { x: 2200, y: GY - 180 - qblockYOffset },
     ];
     qblocks = qpositions.map((p, i) => ({
         x: p.x, y: p.y, w: 38, h: 38,
@@ -174,17 +211,17 @@ function initLevel(idx) {
         coins.push({ x: cx, y: GY - 130 - ((i % 3) * 22), w: 18, h: 18, collected: false, bobT: i * 0.4 });
     });
 
-    // Enemies (goomba-style)
+    // Enemies (crabs and flyers)
     enemies = [
-        { x: 500, y: GY - 30, w: 34, h: 34, vx: -1.2, sx: 400, range: 180, alive: true },
-        { x: 900, y: GY - 30, w: 34, h: 34, vx: 1, sx: 870, range: 150, alive: true },
-        { x: 1400, y: GY - 30, w: 34, h: 34, vx: -1.4, sx: 1320, range: 200, alive: true },
-        { x: 1800, y: GY - 30, w: 34, h: 34, vx: 1.2, sx: 1760, range: 180, alive: true },
-        { x: 2300, y: GY - 30, w: 34, h: 34, vx: -1, sx: 2280, range: 170, alive: true },
+        { x: 500, y: GY - 30, w: 34, h: 34, vx: -1.2, sx: 400, range: 180, type: 'crab', alive: true },
+        { x: 900, y: GY - 100, sy: GY - 100, w: 34, h: 26, vx: 1.5, sx: 870, range: 250, type: 'flyer', alive: true },
+        { x: 1400, y: GY - 30, w: 34, h: 34, vx: -1.4, sx: 1320, range: 200, type: 'crab', alive: true },
+        { x: 1800, y: GY - 120, sy: GY - 120, w: 34, h: 26, vx: 1.8, sx: 1760, range: 180, type: 'flyer', alive: true },
+        { x: 2300, y: GY - 30, w: 34, h: 34, vx: -1, sx: 2280, range: 170, type: 'crab', alive: true },
     ];
 
-    // Flagpole
-    flagpole = { x: 2980, y: GY - 260, h: 260 };
+    // End of Level Goal - Percy waiting to be rescued
+    flagpole = { x: 2980, y: GY - 34, w: 52, h: 52 };
 
     particles = [];
     totalFacts = 0;
@@ -322,6 +359,11 @@ function update() {
         e.x += e.vx;
         if (e.x <= e.sx || e.x >= e.sx + e.range) e.vx *= -1;
 
+        // Flyer specific motion (bobbing up and down)
+        if (e.type === 'flyer') {
+            e.y = e.sy + Math.sin(animT * 0.1) * 20;
+        }
+
         if (player.invincible === 0 && overlap(player, e)) {
             if (player.vy > 0 && player.y + player.h - player.vy * 0.5 <= e.y + 10) {
                 e.alive = false;
@@ -333,8 +375,8 @@ function update() {
         }
     }
 
-    // Flag detection
-    if (player.x + player.w > flagpole.x && player.x < flagpole.x + 20) {
+    // Reach Percy to win the level!
+    if (player.x + player.w > flagpole.x && player.x < flagpole.x + flagpole.w) {
         levelWin(); return;
     }
 
@@ -464,18 +506,7 @@ function draw() {
         }
     }
 
-    // Pipes (decorative, at gaps)
-    const pipeXs = [420, 1260, 1700, 2250];
-    for (const px of pipeXs) {
-        if (px + 40 < camera.x || px > camera.x + W) continue;
-        const ph = 70;
-        ctx.fillStyle = lvl.pipe;
-        ctx.fillRect(px, GY - ph, 40, ph);
-        ctx.fillStyle = shiftColor(lvl.pipe, 30);
-        ctx.fillRect(px - 5, GY - ph, 50, 14); // pipe cap
-        ctx.fillStyle = shiftColor(lvl.pipe, -20);
-        ctx.fillRect(px + 28, GY - ph + 14, 8, ph - 14); // shade
-    }
+    // Pipes (decorative, at gaps) - REMOVED
 
     // Coins
     for (const c of coins) {
@@ -529,61 +560,104 @@ function draw() {
     // Enemies
     for (const e of enemies) {
         if (!e.alive) continue;
-        // CRAB enemy — pixel art style
         const cw = e.w, ch = e.h;
         const cx2 = e.x, cy2 = e.y;
-        // Body (oval-ish rectangle)
-        ctx.fillStyle = '#dd3300';
-        ctx.fillRect(cx2 + 4, cy2 + ch * 0.3, cw - 8, ch * 0.55);
-        // Shell highlight
-        ctx.fillStyle = '#ff5522';
-        ctx.fillRect(cx2 + 6, cy2 + ch * 0.32, cw - 12, ch * 0.15);
-        // Left claw
-        ctx.fillStyle = '#cc2200';
-        ctx.fillRect(cx2 - 8, cy2 + ch * 0.3, 10, 8); // arm
-        ctx.fillRect(cx2 - 12, cy2 + ch * 0.2, 10, 12); // claw
-        ctx.fillRect(cx2 - 12, cy2 + ch * 0.35, 10, 8); // lower claw
-        // Right claw
-        ctx.fillRect(cx2 + cw - 2, cy2 + ch * 0.3, 10, 8); // arm
-        ctx.fillRect(cx2 + cw + 2, cy2 + ch * 0.2, 10, 12); // claw
-        ctx.fillRect(cx2 + cw + 2, cy2 + ch * 0.35, 10, 8); // lower claw
-        // Legs (3 per side)
-        ctx.fillStyle = '#bb2200';
-        for (let l = 0; l < 3; l++) {
-            ctx.fillRect(cx2 + 4 + l * 7, cy2 + ch * 0.8, 4, 10); // left legs
-            ctx.fillRect(cx2 + cw - 10 + l * 2, cy2 + ch * 0.8, 4, 10); // right legs
+
+        ctx.save();
+        if (e.type === 'flyer') {
+            // Flying Monster (Purple Bat)
+            ctx.translate(cx2 + cw / 2, cy2 + ch / 2);
+            if (e.vx > 0) ctx.scale(-1, 1);
+
+            // Flapping motion logic
+            const flap = Math.sin(animT * 0.3) > 0 ? 1 : -1;
+
+            // Body
+            ctx.fillStyle = '#6633aa';
+            ctx.fillRect(-10, -8, 20, 16);
+
+            // Wings
+            ctx.fillStyle = '#441188';
+            if (flap > 0) {
+                ctx.fillRect(-22, -14, 12, 10); // left wing up
+                ctx.fillRect(10, -14, 12, 10); // right wing up
+            } else {
+                ctx.fillRect(-22, -2, 12, 10); // left wing down
+                ctx.fillRect(10, -2, 12, 10); // right wing down
+            }
+
+            // Eye
+            ctx.fillStyle = '#ffcc00';
+            ctx.fillRect(-4, -2, 4, 4);
+        } else {
+            // CRAB enemy — pixel art style
+            // Body (oval-ish rectangle)
+            ctx.fillStyle = '#dd3300';
+            ctx.fillRect(cx2 + 4, cy2 + ch * 0.3, cw - 8, ch * 0.55);
+            // Shell highlight
+            ctx.fillStyle = '#ff5522';
+            ctx.fillRect(cx2 + 6, cy2 + ch * 0.32, cw - 12, ch * 0.15);
+            // Left claw
+            ctx.fillStyle = '#cc2200';
+            ctx.fillRect(cx2 - 8, cy2 + ch * 0.3, 10, 8); // arm
+            ctx.fillRect(cx2 - 12, cy2 + ch * 0.2, 10, 12); // claw
+            ctx.fillRect(cx2 - 12, cy2 + ch * 0.35, 10, 8); // lower claw
+            // Right claw
+            ctx.fillRect(cx2 + cw - 2, cy2 + ch * 0.3, 10, 8); // arm
+            ctx.fillRect(cx2 + cw + 2, cy2 + ch * 0.2, 10, 12); // claw
+            ctx.fillRect(cx2 + cw + 2, cy2 + ch * 0.35, 10, 8); // lower claw
+            // Legs (3 per side)
+            ctx.fillStyle = '#bb2200';
+            for (let l = 0; l < 3; l++) {
+                ctx.fillRect(cx2 + 4 + l * 7, cy2 + ch * 0.8, 4, 10); // left legs
+                ctx.fillRect(cx2 + cw - 10 + l * 2, cy2 + ch * 0.8, 4, 10); // right legs
+            }
+            // Eyes on stalks
+            ctx.fillStyle = '#cc2200';
+            ctx.fillRect(cx2 + 6, cy2 + ch * 0.1, 5, 14); // left stalk
+            ctx.fillRect(cx2 + cw - 11, cy2 + ch * 0.1, 5, 14); // right stalk
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(cx2 + 8, cy2 + ch * 0.12, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(cx2 + cw - 8, cy2 + ch * 0.12, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#000000';
+            ctx.beginPath(); ctx.arc(cx2 + 9, cy2 + ch * 0.12, 2.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(cx2 + cw - 9, cy2 + ch * 0.12, 2.5, 0, Math.PI * 2); ctx.fill();
+            // Angry brow slant
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(cx2 + 4, cy2 + ch * 0.05); ctx.lineTo(cx2 + 14, cy2 + ch * 0.1); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(cx2 + cw - 4, cy2 + ch * 0.05); ctx.lineTo(cx2 + cw - 14, cy2 + ch * 0.1); ctx.stroke();
         }
-        // Eyes on stalks
-        ctx.fillStyle = '#cc2200';
-        ctx.fillRect(cx2 + 6, cy2 + ch * 0.1, 5, 14); // left stalk
-        ctx.fillRect(cx2 + cw - 11, cy2 + ch * 0.1, 5, 14); // right stalk
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath(); ctx.arc(cx2 + 8, cy2 + ch * 0.12, 5, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(cx2 + cw - 8, cy2 + ch * 0.12, 5, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#000000';
-        ctx.beginPath(); ctx.arc(cx2 + 9, cy2 + ch * 0.12, 2.5, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(cx2 + cw - 9, cy2 + ch * 0.12, 2.5, 0, Math.PI * 2); ctx.fill();
-        // Angry brow slant
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(cx2 + 4, cy2 + ch * 0.05); ctx.lineTo(cx2 + 14, cy2 + ch * 0.1); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(cx2 + cw - 4, cy2 + ch * 0.05); ctx.lineTo(cx2 + cw - 14, cy2 + ch * 0.1); ctx.stroke();
+        ctx.restore();
     }
 
-    // Flagpole
+    // Flagpole / Percy to rescue
     {
         const fp = flagpole;
-        ctx.fillStyle = '#888';
-        ctx.fillRect(fp.x + 6, fp.y, 8, fp.h);
-        ctx.fillStyle = totalFacts >= LEVELS[lvlIdx].facts.length ? '#f7c948' : '#555';
-        ctx.fillRect(fp.x + 14, fp.y, 32, 22);
-        ctx.fillStyle = '#aaa';
-        ctx.beginPath(); ctx.arc(fp.x + 10, fp.y, 10, 0, Math.PI * 2); ctx.fill();
-        ctx.font = '7px "Press Start 2P"';
-        ctx.fillStyle = totalFacts >= LEVELS[lvlIdx].facts.length ? '#f7c948' : '#444';
-        ctx.textAlign = 'center';
-        ctx.fillText(totalFacts >= LEVELS[lvlIdx].facts.length ? 'GO!' : `${totalFacts}/${LEVELS[lvlIdx].facts.length}`, fp.x + 10, fp.y - 14);
-        ctx.textAlign = 'left';
+        const frameKey = (Math.floor(animT / 6) % 2 === 0) ? 'percy1' : 'percy2';
+        const pImg = imgs[frameKey];
+        if (pImg && pImg.complete && pImg.naturalWidth > 0) {
+            ctx.save();
+            ctx.translate(fp.x + fp.w / 2, fp.y + fp.h / 2);
+            // Flip if facing left (looking back at the player)
+            ctx.scale(-1, 1);
+
+            // Draw slightly larger than the hitbox for better visibility
+            const dw = 52, dh = 52;
+            ctx.drawImage(pImg, -dw / 2, -dh / 2 - 8, dw, dh);
+            ctx.restore();
+
+            // Draw "RESCUE ME!" indicator
+            ctx.font = '7px "Press Start 2P"';
+            ctx.fillStyle = totalFacts >= LEVELS[lvlIdx].facts.length ? '#f7c948' : '#fff';
+            ctx.textAlign = 'center';
+            ctx.fillText(totalFacts >= LEVELS[lvlIdx].facts.length ? 'SAVE PERCY!' : `GET ${LEVELS[lvlIdx].facts.length} FACTS!`, fp.x + fp.w / 2, fp.y - 14);
+            ctx.textAlign = 'left';
+        } else {
+            // Flagpole fallback
+            ctx.fillStyle = '#888';
+            ctx.fillRect(fp.x + 6, fp.y, 8, 80);
+        }
     }
 
     // Particles

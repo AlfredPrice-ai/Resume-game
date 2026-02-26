@@ -287,6 +287,7 @@ function update() {
         player.onGround = false;
         player.state = 'jump';
         spawnParts(player.x + player.w / 2, player.y + player.h, '#f7c948', 6);
+        createJumpSound(); // Play jump sound
     }
     jumpReq = false;
 
@@ -416,6 +417,7 @@ function loseLife() {
     spawnParts(player.x + player.w / 2, player.y, '#ff4444', 20);
     if (lives <= 0) {
         gameState = 'over';
+        stopBackgroundMusic();
         setTimeout(() => {
             document.getElementById('game-wrap').style.display = 'none';
             document.getElementById('scr-over').classList.remove('off');
@@ -436,6 +438,7 @@ function levelWin() {
     setTimeout(() => {
         if (lvlIdx >= LEVELS.length - 1) {
             gameState = 'won';
+            stopBackgroundMusic();
             document.getElementById('game-wrap').style.display = 'none';
             document.getElementById('win-stats').textContent =
                 `${totalFacts} facts collected across ${LEVELS.length} levels!`;
@@ -703,6 +706,67 @@ function shiftColor(hex, amt) {
     return `rgb(${r},${g},${b})`;
 }
 
+// ── AUDIO ───────────────────────────────────────────────
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function createJumpSound() {
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    
+    osc.frequency.setValueAtTime(400, now);
+    osc.frequency.exponentialRampToValueAtTime(600, now + 0.05);
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+    
+    osc.start(now);
+    osc.stop(now + 0.1);
+}
+
+function createBackgroundMusic() {
+    const now = audioCtx.currentTime;
+    const notes = [330, 330, 330, 262, 330, 392, 196]; // Simple 8-bit melody
+    let time = now;
+    
+    notes.forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(freq, time);
+        gain.gain.setValueAtTime(0.1, time);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
+        
+        osc.start(time);
+        osc.stop(time + 0.3);
+        time += 0.3;
+    });
+}
+
+let musicPlaying = false;
+function startBackgroundMusic() {
+    if (musicPlaying) return;
+    musicPlaying = true;
+    
+    const playMusicLoop = () => {
+        if (gameState === 'playing') {
+            createBackgroundMusic();
+            setTimeout(playMusicLoop, 2100); // Loop after melody ends
+        } else {
+            musicPlaying = false;
+        }
+    };
+    playMusicLoop();
+}
+
+function stopBackgroundMusic() {
+    musicPlaying = false;
+}
+
 // ── GAME LOOP ────────────────────────────────────────────
 let raf, lastT = 0;
 function loop(ts) {
@@ -742,6 +806,7 @@ function startGame() {
     document.getElementById('game-wrap').style.display = 'block';
     gameState = 'playing';
     initLevel(0);
+    startBackgroundMusic(); // Start background music
     raf = requestAnimationFrame(loop);
 }
 

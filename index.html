@@ -12,7 +12,7 @@
   <div id="scan"></div>
 
   <!-- TITLE -->
-  <div class="screen" id="scr-start">
+  <div class="screen" id="scr-start" onclick="startGame()" style="cursor:pointer">
     <h1>8-BIT ALFRED</h1>
     <div class="sub">
       INTERACTIVE RESUME ADVENTURE<br>
@@ -29,7 +29,7 @@
   </div>
 
   <!-- GAME OVER -->
-  <div class="screen off" id="scr-over">
+  <div class="screen off" id="scr-over" onclick="restartGame()" style="cursor:pointer">
     <h1 style="color:#ff6b6b">GAME OVER</h1>
     <div class="sub">Even the best consultants<br>need a second chance!</div>
     <button class="btn" onclick="restartGame()">↺ TRY AGAIN</button>

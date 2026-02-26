@@ -1068,7 +1068,7 @@ function loop(ts) {
 }
 
 // ── CONTROLS ─────────────────────────────────────────────
-document.addEventListener('keydown', e => {
+window.addEventListener('keydown', e => {
     if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'x', 'f', 'z'].includes(e.key)) {
         e.preventDefault();
     }
@@ -1080,8 +1080,8 @@ document.addEventListener('keydown', e => {
     keys[e.key] = true;
     if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') jumpReq = true;
     if (e.key === 'x' || e.key === 'f' || e.key === 'z') slashReq = true;
-}, { capture: true });
-document.addEventListener('keyup', e => { keys[e.key] = false; });
+});
+window.addEventListener('keyup', e => { keys[e.key] = false; });
 
 function doJump() { jumpReq = true; }
 function doSlash() { slashReq = true; }

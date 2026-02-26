@@ -2,5 +2,5 @@
   "buildCommand": "",
   "outputDirectory": ".",
   "devCommand": "",
-  "framework": "html"
+  "cleanUrls": true
 }

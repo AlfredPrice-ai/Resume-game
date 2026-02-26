@@ -20,8 +20,8 @@
       Alfred R. Price · MA, CSM, CSPO<br>
       Business Analyst Consultant<br>
       ─────────────────────────────<br>
-      ← → MOVE &nbsp;|&nbsp; SPACE / ↑ JUMP<br>
-      Hit ❓ blocks for resume facts!
+      ← → MOVE &nbsp;|&nbsp; SPACE / ↑ JUMP &nbsp;|&nbsp; X / F SWORD<br>
+      Hit ❓ blocks · Slash enemies with the sword!
     </div>
     <button class="btn" onclick="startGame()">▶ PRESS START</button>
     <div style="margin-top:18px;font-size:7px;color:#444;">4 LEVELS · 20 RESUME FACTS · LINCOLN-STYLE ADVENTURE</div>
@@ -36,16 +36,24 @@
 
   <!-- WIN -->
   <div class="screen off" id="scr-win">
-    <h1>YOU WIN! 🎉</h1>
+    <h1>YOU WIN!</h1>
     <div class="sub">
-      You've completed Alfred's career journey!<br>
-      ─────────────────────────────────────────<br>
+      You rescued Percy &amp; completed Alfred's journey!<br>
+      ─────────────────────────────────────────────────<br>
       <span id="win-stats"></span>
     </div>
+    <div class="sub" id="percy-facts" style="margin-top:10px;text-align:left;font-size:7px;line-height:1.9;max-width:420px;">
+      <span style="color:#4cc9f0">PERCY SAYS...</span><br>
+      <span style="color:#f7c948">Fav Colors:</span> Navy Blue, Forest Green &amp; Gold<br>
+      <span style="color:#f7c948">Hobbies:</span> Photography, Hiking &amp; Basketball<br>
+      <span style="color:#f7c948">Loves:</span> Strategy games, cooking &amp; travel<br>
+      <span style="color:#f7c948">Fun Fact:</span> Has visited 12+ countries<br>
+      <span style="color:#f7c948">Motto:</span> "Build things that matter."
+    </div>
     <button class="btn ln" onclick="window.open('https://www.linkedin.com/in/alfredrprice/','_blank')">
-      🔗 Connect on LinkedIn
+      CONNECT ON LINKEDIN
     </button>
-    <button class="btn" onclick="restartGame()" style="margin-top:8px">↺ PLAY AGAIN</button>
+    <button class="btn" onclick="restartGame()" style="margin-top:8px">PLAY AGAIN</button>
   </div>
 
   <!-- GAME -->
@@ -58,8 +66,8 @@
       </div>
       <canvas id="canvas" width="900" height="480"></canvas>
       <div id="ctrls">
-        <span>← → MOVE &nbsp; SPACE / ↑ JUMP</span>
-        <span>Hit ❓ blocks to learn about Alfred!</span>
+        <span>← → MOVE &nbsp; SPACE JUMP &nbsp; X / F SWORD</span>
+        <span>Slash enemies · Ogres need 2-3 hits · Hit ❓ blocks!</span>
       </div>
     </div>
   </div>
@@ -68,6 +76,7 @@
     <button class="mbtn" id="mb-left" onpointerdown="mkeys.left=true" onpointerup="mkeys.left=false">◀</button>
     <button class="mbtn" id="mb-jump" onpointerdown="doJump()">▲</button>
     <button class="mbtn" id="mb-right" onpointerdown="mkeys.right=true" onpointerup="mkeys.right=false">▶</button>
+    <button class="mbtn" id="mb-slash" onpointerdown="doSlash()" style="background:#1a3a6e;color:#aad4ff;margin-left:8px;">⚔</button>
   </div>
 
   <div id="popup">

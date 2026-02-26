@@ -123,6 +123,10 @@ let animT = 0, animF = 0;
 let showFact = false, transitioning = false;
 let jumpReq = false;
 
+// Sword state
+let sword = { active: false, timer: 0, cooldown: 0 };
+let slashReq = false;
+
 // Sprite animation map
 const ANIM = {
     idle: ['idle2'], // stand still instead of waving
@@ -136,13 +140,181 @@ function getFrame(state) {
     return imgs[frames[animF % frames.length]];
 }
 
+// ── LEVEL LAYOUTS ────────────────────────────────────────
+const LEVEL_LAYOUTS = [
+    // Level 1 — rolling hills style, wide open, gentle intro
+    {
+        platforms: (GY) => [
+            { x: 0,    y: GY,       w: 3200, h: 80, t: 'g' },
+            { x: 180,  y: GY - 90,  w: 120,  h: 20, t: 'b' },
+            { x: 340,  y: GY - 150, w: 90,   h: 20, t: 'b' },
+            { x: 500,  y: GY - 80,  w: 150,  h: 20, t: 'b' },
+            { x: 700,  y: GY - 130, w: 100,  h: 20, t: 'b' },
+            { x: 850,  y: GY - 190, w: 80,   h: 20, t: 'b' },
+            { x: 980,  y: GY - 110, w: 130,  h: 20, t: 'b' },
+            { x: 1150, y: GY - 170, w: 100,  h: 20, t: 'b' },
+            { x: 1320, y: GY - 100, w: 120,  h: 20, t: 'b' },
+            { x: 1500, y: GY - 160, w: 100,  h: 20, t: 'b' },
+            { x: 1680, y: GY - 80,  w: 130,  h: 20, t: 'b' },
+            { x: 1860, y: GY - 140, w: 100,  h: 20, t: 'b' },
+            { x: 2050, y: GY - 190, w: 90,   h: 20, t: 'b' },
+            { x: 2200, y: GY - 110, w: 120,  h: 20, t: 'b' },
+            { x: 2380, y: GY - 150, w: 100,  h: 20, t: 'b' },
+            { x: 2560, y: GY - 80,  w: 110,  h: 20, t: 'b' },
+            { x: 2740, y: GY - 40,  w: 60,   h: 20, t: 'b' },
+            { x: 2800, y: GY - 80,  w: 60,   h: 20, t: 'b' },
+            { x: 2860, y: GY - 120, w: 60,   h: 20, t: 'b' },
+            { x: 2920, y: GY - 160, w: 80,   h: 20, t: 'b' },
+        ],
+        enemies: (GY) => [
+            { x: 460,  y: GY - 38, w: 34, h: 34, vx: -1.2, sx: 380,  range: 180, type: 'crab',   alive: true },
+            { x: 850,  y: GY - 38, w: 34, h: 34, vx:  1.3, sx: 780,  range: 200, type: 'crab',   alive: true },
+            { x: 1100, y: GY - 110, sy: GY - 110, w: 36, h: 28, vx: 1.4, sx: 1050, range: 220, type: 'flyer', alive: true },
+            { x: 1500, y: GY - 38, w: 34, h: 34, vx: -1.5, sx: 1420, range: 200, type: 'crab',   alive: true },
+            { x: 1900, y: GY - 38, w: 40, h: 40, vx: -1.0, sx: 1820, range: 160, type: 'ogre',   alive: true, hp: 2 },
+            { x: 2200, y: GY - 120, sy: GY - 120, w: 36, h: 28, vx: 1.8, sx: 2160, range: 200, type: 'flyer', alive: true },
+            { x: 2500, y: GY - 38, w: 34, h: 34, vx: -1.2, sx: 2440, range: 160, type: 'crab',   alive: true },
+        ],
+        qpositions: (GY) => [
+            { x: 240,  y: GY - 240 }, { x: 720,  y: GY - 260 },
+            { x: 1200, y: GY - 280 }, { x: 1800, y: GY - 250 },
+            { x: 2300, y: GY - 220 },
+        ],
+    },
+    // Level 2 — sky islands, big gaps, flyer-heavy
+    {
+        platforms: (GY) => [
+            { x: 0,    y: GY,       w: 400,  h: 80, t: 'g' },
+            { x: 500,  y: GY - 50,  w: 160,  h: 20, t: 'b' },
+            { x: 720,  y: GY - 120, w: 100,  h: 20, t: 'b' },
+            { x: 880,  y: GY - 200, w: 80,   h: 20, t: 'b' },
+            { x: 1020, y: GY - 130, w: 120,  h: 20, t: 'b' },
+            { x: 1200, y: GY,       w: 300,  h: 80, t: 'g' },
+            { x: 1560, y: GY - 80,  w: 100,  h: 20, t: 'b' },
+            { x: 1710, y: GY - 160, w: 90,   h: 20, t: 'b' },
+            { x: 1860, y: GY - 80,  w: 110,  h: 20, t: 'b' },
+            { x: 2020, y: GY - 200, w: 80,   h: 20, t: 'b' },
+            { x: 2160, y: GY,       w: 280,  h: 80, t: 'g' },
+            { x: 2500, y: GY - 100, w: 90,   h: 20, t: 'b' },
+            { x: 2650, y: GY - 180, w: 80,   h: 20, t: 'b' },
+            { x: 2800, y: GY - 100, w: 80,   h: 20, t: 'b' },
+            { x: 2940, y: GY - 40,  w: 80,   h: 20, t: 'b' },
+            { x: 2990, y: GY,       w: 300,  h: 80, t: 'g' },
+        ],
+        enemies: (GY) => [
+            { x: 540,  y: GY - 100, sy: GY - 100, w: 36, h: 28, vx: 1.5, sx: 500, range: 220, type: 'flyer', alive: true },
+            { x: 750,  y: GY - 160, sy: GY - 160, w: 36, h: 28, vx:-1.6, sx: 700, range: 180, type: 'flyer', alive: true },
+            { x: 1050, y: GY - 38,  w: 34, h: 34, vx: 1.3, sx: 990, range: 160, type: 'crab', alive: true },
+            { x: 1250, y: GY - 38,  w: 40, h: 40, vx:-1.0, sx: 1200, range: 180, type: 'ogre', alive: true, hp: 2 },
+            { x: 1600, y: GY - 120, sy: GY - 120, w: 36, h: 28, vx: 1.8, sx: 1560, range: 200, type: 'flyer', alive: true },
+            { x: 1900, y: GY - 120, sy: GY - 120, w: 36, h: 28, vx:-1.5, sx: 1860, range: 180, type: 'flyer', alive: true },
+            { x: 2220, y: GY - 38,  w: 34, h: 34, vx: 1.2, sx: 2160, range: 200, type: 'crab', alive: true },
+            { x: 2550, y: GY - 130, sy: GY - 130, w: 36, h: 28, vx: 2.0, sx: 2500, range: 200, type: 'flyer', alive: true },
+            { x: 2820, y: GY - 38,  w: 40, h: 40, vx:-1.2, sx: 2760, range: 160, type: 'ogre', alive: true, hp: 2 },
+        ],
+        qpositions: (GY) => [
+            { x: 160,  y: GY - 220 }, { x: 760,  y: GY - 300 },
+            { x: 1260, y: GY - 260 }, { x: 1900, y: GY - 290 },
+            { x: 2520, y: GY - 260 },
+        ],
+    },
+    // Level 3 — tight maze-like corridors with ceiling platforms
+    {
+        platforms: (GY) => [
+            { x: 0,    y: GY,        w: 3200, h: 80, t: 'g' },
+            { x: 0,    y: GY - 220,  w: 200,  h: 20, t: 'b' }, // ceiling shelf
+            { x: 260,  y: GY - 100,  w: 80,   h: 20, t: 'b' },
+            { x: 400,  y: GY - 180,  w: 80,   h: 20, t: 'b' },
+            { x: 540,  y: GY - 100,  w: 80,   h: 20, t: 'b' },
+            { x: 660,  y: GY - 220,  w: 200,  h: 20, t: 'b' },
+            { x: 920,  y: GY - 120,  w: 80,   h: 20, t: 'b' },
+            { x: 1060, y: GY - 200,  w: 120,  h: 20, t: 'b' },
+            { x: 1240, y: GY - 130,  w: 80,   h: 20, t: 'b' },
+            { x: 1380, y: GY - 220,  w: 200,  h: 20, t: 'b' },
+            { x: 1640, y: GY - 100,  w: 80,   h: 20, t: 'b' },
+            { x: 1780, y: GY - 180,  w: 80,   h: 20, t: 'b' },
+            { x: 1920, y: GY - 100,  w: 80,   h: 20, t: 'b' },
+            { x: 2060, y: GY - 220,  w: 160,  h: 20, t: 'b' },
+            { x: 2280, y: GY - 140,  w: 80,   h: 20, t: 'b' },
+            { x: 2420, y: GY - 200,  w: 80,   h: 20, t: 'b' },
+            { x: 2560, y: GY - 120,  w: 100,  h: 20, t: 'b' },
+            { x: 2720, y: GY - 40,   w: 60,   h: 20, t: 'b' },
+            { x: 2780, y: GY - 80,   w: 60,   h: 20, t: 'b' },
+            { x: 2840, y: GY - 120,  w: 60,   h: 20, t: 'b' },
+            { x: 2900, y: GY - 160,  w: 80,   h: 20, t: 'b' },
+        ],
+        enemies: (GY) => [
+            { x: 300,  y: GY - 38,  w: 34, h: 34, vx:-1.5, sx: 260,  range: 150, type: 'crab',  alive: true },
+            { x: 600,  y: GY - 38,  w: 40, h: 40, vx: 1.0, sx: 540,  range: 170, type: 'ogre',  alive: true, hp: 2 },
+            { x: 950,  y: GY - 160, sy: GY - 160, w: 36, h: 28, vx: 1.6, sx: 900, range: 200, type: 'flyer', alive: true },
+            { x: 1100, y: GY - 38,  w: 34, h: 34, vx:-1.3, sx: 1060, range: 140, type: 'crab',  alive: true },
+            { x: 1420, y: GY - 38,  w: 40, h: 40, vx:-1.1, sx: 1380, range: 160, type: 'ogre',  alive: true, hp: 2 },
+            { x: 1700, y: GY - 38,  w: 34, h: 34, vx: 1.4, sx: 1640, range: 140, type: 'crab',  alive: true },
+            { x: 1950, y: GY - 160, sy: GY - 160, w: 36, h: 28, vx:-1.8, sx: 1900, range: 180, type: 'flyer', alive: true },
+            { x: 2300, y: GY - 38,  w: 40, h: 40, vx: 1.2, sx: 2260, range: 160, type: 'ogre',  alive: true, hp: 2 },
+            { x: 2600, y: GY - 38,  w: 34, h: 34, vx:-1.5, sx: 2540, range: 160, type: 'crab',  alive: true },
+        ],
+        qpositions: (GY) => [
+            { x: 50,   y: GY - 310 }, { x: 690,  y: GY - 310 },
+            { x: 1100, y: GY - 300 }, { x: 1860, y: GY - 280 },
+            { x: 2320, y: GY - 310 },
+        ],
+    },
+    // Level 4 — wide tech world, lots of ogres as final boss rush
+    {
+        platforms: (GY) => [
+            { x: 0,    y: GY,       w: 3200, h: 80, t: 'g' },
+            { x: 150,  y: GY - 120, w: 100,  h: 20, t: 'b' },
+            { x: 320,  y: GY - 200, w: 80,   h: 20, t: 'b' },
+            { x: 460,  y: GY - 140, w: 120,  h: 20, t: 'b' },
+            { x: 640,  y: GY - 80,  w: 140,  h: 20, t: 'b' },
+            { x: 840,  y: GY - 180, w: 90,   h: 20, t: 'b' },
+            { x: 990,  y: GY - 240, w: 80,   h: 20, t: 'b' },
+            { x: 1140, y: GY - 160, w: 100,  h: 20, t: 'b' },
+            { x: 1300, y: GY - 100, w: 130,  h: 20, t: 'b' },
+            { x: 1500, y: GY - 200, w: 80,   h: 20, t: 'b' },
+            { x: 1650, y: GY - 140, w: 100,  h: 20, t: 'b' },
+            { x: 1820, y: GY - 80,  w: 120,  h: 20, t: 'b' },
+            { x: 2000, y: GY - 180, w: 90,   h: 20, t: 'b' },
+            { x: 2160, y: GY - 240, w: 80,   h: 20, t: 'b' },
+            { x: 2300, y: GY - 160, w: 100,  h: 20, t: 'b' },
+            { x: 2460, y: GY - 100, w: 120,  h: 20, t: 'b' },
+            { x: 2640, y: GY - 170, w: 90,   h: 20, t: 'b' },
+            { x: 2780, y: GY - 40,  w: 60,   h: 20, t: 'b' },
+            { x: 2840, y: GY - 90,  w: 60,   h: 20, t: 'b' },
+            { x: 2900, y: GY - 140, w: 60,   h: 20, t: 'b' },
+            { x: 2960, y: GY - 190, w: 80,   h: 20, t: 'b' },
+        ],
+        enemies: (GY) => [
+            { x: 400,  y: GY - 38,  w: 34, h: 34, vx:-1.2, sx: 320,  range: 160, type: 'crab',  alive: true },
+            { x: 700,  y: GY - 38,  w: 40, h: 40, vx: 1.1, sx: 640,  range: 160, type: 'ogre',  alive: true, hp: 2 },
+            { x: 1000, y: GY - 170, sy: GY - 170, w: 36, h: 28, vx: 1.5, sx: 960, range: 200, type: 'flyer', alive: true },
+            { x: 1160, y: GY - 38,  w: 40, h: 40, vx:-1.3, sx: 1100, range: 160, type: 'ogre',  alive: true, hp: 2 },
+            { x: 1350, y: GY - 38,  w: 34, h: 34, vx: 1.4, sx: 1300, range: 150, type: 'crab',  alive: true },
+            { x: 1680, y: GY - 38,  w: 40, h: 40, vx:-1.0, sx: 1620, range: 160, type: 'ogre',  alive: true, hp: 2 },
+            { x: 1900, y: GY - 160, sy: GY - 160, w: 36, h: 28, vx: 2.0, sx: 1860, range: 180, type: 'flyer', alive: true },
+            { x: 2160, y: GY - 38,  w: 34, h: 34, vx:-1.5, sx: 2100, range: 160, type: 'crab',  alive: true },
+            { x: 2360, y: GY - 38,  w: 40, h: 40, vx: 1.2, sx: 2300, range: 160, type: 'ogre',  alive: true, hp: 2 },
+            { x: 2600, y: GY - 38,  w: 40, h: 40, vx:-1.4, sx: 2540, range: 160, type: 'ogre',  alive: true, hp: 3 },
+        ],
+        qpositions: (GY) => [
+            { x: 200,  y: GY - 280 }, { x: 860,  y: GY - 320 },
+            { x: 1380, y: GY - 270 }, { x: 1900, y: GY - 290 },
+            { x: 2400, y: GY - 290 },
+        ],
+    },
+];
+
 // ── LEVEL INIT ───────────────────────────────────────────
 function initLevel(idx) {
     lvlIdx = idx;
     const lvl = LEVELS[idx];
+    const layout = LEVEL_LAYOUTS[idx] || LEVEL_LAYOUTS[0];
     camera = { x: 0 };
     transitioning = false;
     jumpReq = false;
+    slashReq = false;
+    sword = { active: false, timer: 0, cooldown: 0 };
 
     player = {
         x: 80, y: 320, vx: 0, vy: 0,
@@ -151,82 +323,33 @@ function initLevel(idx) {
         state: 'idle', invincible: 0, blinkTimer: 0
     };
 
-    // World is 3000px wide
-    const GY = H - 80; // ground top Y
+    const GY = H - 80;
 
-    platforms = [
-        // Continuous Ground
-        { x: 0, y: GY, w: 3200, h: 80, t: 'g' },
+    platforms = layout.platforms(GY);
 
-        // Step platforms — lots to jump on
-        { x: 200, y: GY - 110, w: 110, h: 20, t: 'b' },
-        { x: 370, y: GY - 170, w: 90, h: 20, t: 'b' },
-        { x: 480, y: GY - 90, w: 130, h: 20, t: 'b' },
-        { x: 660, y: GY - 140, w: 100, h: 20, t: 'b' },
-        { x: 800, y: GY - 190, w: 80, h: 20, t: 'b' },
-        { x: 900, y: GY - 110, w: 120, h: 20, t: 'b' },
-        { x: 1060, y: GY - 160, w: 100, h: 20, t: 'b' },
-        { x: 1200, y: GY - 220, w: 90, h: 20, t: 'b' },
-        { x: 1350, y: GY - 130, w: 120, h: 20, t: 'b' },
-        { x: 1520, y: GY - 80, w: 100, h: 20, t: 'b' },
-        { x: 1640, y: GY - 160, w: 110, h: 20, t: 'b' },
-        { x: 1800, y: GY - 110, w: 130, h: 20, t: 'b' },
-        { x: 1980, y: GY - 180, w: 100, h: 20, t: 'b' },
-        { x: 2120, y: GY - 130, w: 90, h: 20, t: 'b' },
-        { x: 2280, y: GY - 90, w: 120, h: 20, t: 'b' },
-        { x: 2460, y: GY - 150, w: 100, h: 20, t: 'b' },
-        { x: 2600, y: GY - 200, w: 90, h: 20, t: 'b' },
-
-        // Staircase to flag
-        { x: 2760, y: GY - 40, w: 60, h: 20, t: 'b' },
-        { x: 2820, y: GY - 80, w: 60, h: 20, t: 'b' },
-        { x: 2880, y: GY - 120, w: 60, h: 20, t: 'b' },
-        { x: 2940, y: GY - 160, w: 60, h: 20, t: 'b' },
-    ];
-
-    // ❓ Question blocks — 5 per level, 1 fact each
-    qblocks = [];
-    let bx = 240; // Starting x for the first block
-    const qblockYOffset = 40; // How much higher to raise them
-    const qpositions = [
-        { x: 240, y: GY - 200 - qblockYOffset },
-        { x: 700, y: GY - 240 - qblockYOffset },
-        { x: 1100, y: GY - 260 - qblockYOffset },
-        { x: 1700, y: GY - 210 - qblockYOffset },
-        { x: 2200, y: GY - 180 - qblockYOffset },
-    ];
+    // Q-blocks
+    const qpositions = layout.qpositions(GY);
     qblocks = qpositions.map((p, i) => ({
         x: p.x, y: p.y, w: 38, h: 38,
         factIdx: i, hit: false,
         bounceY: 0, bounceDir: 0
     }));
 
-    // Coins decorative
+    // Coins
     coins = [];
-    const coinSpots = [
-        150, 220, 290, 510, 580, 650, 920, 990, 1060,
-        1380, 1450, 1520, 1830, 1900, 1970, 2300, 2370, 2440
-    ];
+    const coinSpots = [150, 260, 400, 560, 700, 900, 1060, 1200, 1420, 1600, 1800, 2000, 2200, 2400, 2600];
     coinSpots.forEach((cx, i) => {
         coins.push({ x: cx, y: GY - 130 - ((i % 3) * 22), w: 18, h: 18, collected: false, bobT: i * 0.4 });
     });
 
-    // Enemies (crabs and flyers)
-    enemies = [
-        { x: 500, y: GY - 30, w: 34, h: 34, vx: -1.2, sx: 400, range: 180, type: 'crab', alive: true },
-        { x: 900, y: GY - 100, sy: GY - 100, w: 34, h: 26, vx: 1.5, sx: 870, range: 250, type: 'flyer', alive: true },
-        { x: 1400, y: GY - 30, w: 34, h: 34, vx: -1.4, sx: 1320, range: 200, type: 'crab', alive: true },
-        { x: 1800, y: GY - 120, sy: GY - 120, w: 34, h: 26, vx: 1.8, sx: 1760, range: 180, type: 'flyer', alive: true },
-        { x: 2300, y: GY - 30, w: 34, h: 34, vx: -1, sx: 2280, range: 170, type: 'crab', alive: true },
-    ];
+    enemies = layout.enemies(GY);
 
-    // End of Level Goal - Percy waiting to be rescued
+    // End of Level Goal
     flagpole = { x: 2980, y: GY - 34, w: 52, h: 52 };
 
     particles = [];
     totalFacts = 0;
 
-    // HUD
     document.getElementById('h-level').textContent = `LV${idx + 1}: ${lvl.name.slice(0, 15)}`;
     document.getElementById('h-score').textContent = totalFacts;
     document.getElementById('h-total').textContent = lvl.facts.length;
@@ -276,6 +399,7 @@ function update() {
     const left = keys['ArrowLeft'] || keys['a'] || mkeys.left;
     const right = keys['ArrowRight'] || keys['d'] || mkeys.right;
     const jump = keys[' '] || keys['ArrowUp'] || keys['w'] || jumpReq;
+    const slash = keys['x'] || keys['f'] || keys['z'] || slashReq;
 
     // Move
     if (left) { player.vx = -3.8; player.facing = -1; if (player.onGround) player.state = 'run'; }
@@ -290,6 +414,47 @@ function update() {
         createJumpSound(); // Play jump sound
     }
     jumpReq = false;
+    slashReq = false;
+
+    // Sword swing
+    if (sword.cooldown > 0) sword.cooldown--;
+    if (slash && !sword.active && sword.cooldown === 0) {
+        sword.active = true;
+        sword.timer = 14;
+        sword.cooldown = 22;
+        createSlashSound();
+    }
+    if (sword.active) {
+        sword.timer--;
+        if (sword.timer <= 0) sword.active = false;
+
+        // Sword hitbox extends in facing direction
+        const sw = 52, sh = 28;
+        const sx = player.facing === 1
+            ? player.x + player.w
+            : player.x - sw;
+        const sy = player.y + 16;
+        const swordBox = { x: sx, y: sy, w: sw, h: sh };
+
+        for (const e of enemies) {
+            if (!e.alive) continue;
+            if (overlap(swordBox, e)) {
+                if (e.type === 'ogre') {
+                    e.hp = (e.hp || 1) - 1;
+                    spawnParts(e.x + e.w / 2, e.y + e.h / 2, '#ff9900', 10);
+                    createHitSound();
+                    if (e.hp <= 0) {
+                        e.alive = false;
+                        spawnParts(e.x + e.w / 2, e.y + e.h / 2, '#ff6b6b', 20);
+                    }
+                } else {
+                    e.alive = false;
+                    spawnParts(e.x + e.w / 2, e.y + e.h / 2, '#ff6b6b', 14);
+                    createHitSound();
+                }
+            }
+        }
+    }
 
     player.vy += 0.55;
     if (player.vy > 14) player.vy = 14;
@@ -366,10 +531,17 @@ function update() {
         }
 
         if (player.invincible === 0 && overlap(player, e)) {
-            if (player.vy > 0 && player.y + player.h - player.vy * 0.5 <= e.y + 10) {
+            const stomped = player.vy > 0 && player.y + player.h - player.vy * 0.5 <= e.y + 10;
+            if (stomped && e.type !== 'ogre') {
+                // Can stomp crabs and flyers
                 e.alive = false;
                 player.vy = -9;
                 spawnParts(e.x + e.w / 2, e.y + e.h / 2, '#ff6b6b', 14);
+                createHitSound();
+            } else if (stomped && e.type === 'ogre') {
+                // Ogres bounce you off — use the sword!
+                player.vy = -9;
+                loseLife(); return;
             } else {
                 loseLife(); return;
             }
@@ -630,6 +802,44 @@ function draw() {
             ctx.lineWidth = 2;
             ctx.beginPath(); ctx.moveTo(cx2 + 4, cy2 + ch * 0.05); ctx.lineTo(cx2 + 14, cy2 + ch * 0.1); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(cx2 + cw - 4, cy2 + ch * 0.05); ctx.lineTo(cx2 + cw - 14, cy2 + ch * 0.1); ctx.stroke();
+        } else if (e.type === 'ogre') {
+            // BIG OGRE — pixel art chunky green monster
+            const hp = e.hp || 1;
+            // Body
+            ctx.fillStyle = '#2e7d32';
+            ctx.fillRect(cx2, cy2 + 10, cw, ch * 0.7);
+            // Highlight
+            ctx.fillStyle = '#43a047';
+            ctx.fillRect(cx2 + 2, cy2 + 12, cw - 4, 6);
+            // Head (big, square)
+            ctx.fillStyle = '#388e3c';
+            ctx.fillRect(cx2 - 4, cy2 - 10, cw + 8, 24);
+            // Eyes
+            ctx.fillStyle = '#ff3d00';
+            ctx.fillRect(cx2 + 4, cy2 - 6, 8, 8);
+            ctx.fillRect(cx2 + cw - 12, cy2 - 6, 8, 8);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(cx2 + 6, cy2 - 4, 4, 4);
+            ctx.fillRect(cx2 + cw - 10, cy2 - 4, 4, 4);
+            // Mouth / teeth
+            ctx.fillStyle = '#1b5e20';
+            ctx.fillRect(cx2 + 6, cy2 + 8, cw - 12, 6);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(cx2 + 8, cy2 + 8, 5, 5);
+            ctx.fillRect(cx2 + cw - 13, cy2 + 8, 5, 5);
+            // Arms
+            ctx.fillStyle = '#2e7d32';
+            ctx.fillRect(cx2 - 10, cy2 + 14, 12, 20);
+            ctx.fillRect(cx2 + cw - 2, cy2 + 14, 12, 20);
+            // Feet
+            ctx.fillStyle = '#1b5e20';
+            ctx.fillRect(cx2 + 2, cy2 + ch * 0.7, 12, 10);
+            ctx.fillRect(cx2 + cw - 14, cy2 + ch * 0.7, 12, 10);
+            // HP pips
+            for (let pip = 0; pip < (e.hp || 1); pip++) {
+                ctx.fillStyle = pip === 0 ? '#ff3d00' : '#ffb300';
+                ctx.fillRect(cx2 + 4 + pip * 12, cy2 - 20, 9, 6);
+            }
         }
         ctx.restore();
     }
@@ -674,6 +884,47 @@ function draw() {
     // Player
     if (player.invincible === 0 || player.blinkTimer < 3) {
         drawPlayer();
+    }
+
+    // Sword swing
+    if (sword.active) {
+        const progress = 1 - sword.timer / 14;
+        const alpha = sword.timer > 7 ? 1 : sword.timer / 7;
+        ctx.globalAlpha = alpha;
+
+        const bladeLen = 52;
+        const bladeW = 8;
+        const bx = player.facing === 1 ? player.x + player.w : player.x - bladeLen;
+        const by = player.y + 20;
+
+        // Blade glow
+        ctx.shadowColor = '#aad4ff';
+        ctx.shadowBlur = 14;
+
+        // Blade body
+        ctx.fillStyle = '#e8f4ff';
+        ctx.fillRect(bx, by, bladeLen, bladeW);
+
+        // Blade edge highlight
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(bx, by, bladeLen, 2);
+
+        // Handle
+        const hx = player.facing === 1 ? player.x + player.w - 10 : player.x + bladeLen - player.w + 10 - 10;
+        ctx.fillStyle = '#8B4513';
+        ctx.fillRect(player.facing === 1 ? player.x + player.w - 8 : player.x + 4, by - 6, 8, bladeW + 12);
+
+        // Slash arc particles
+        ctx.strokeStyle = 'rgba(170, 212, 255, ' + alpha + ')';
+        ctx.lineWidth = 3;
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        const arcX = player.facing === 1 ? player.x + player.w : player.x;
+        ctx.arc(arcX, by + bladeW / 2, bladeLen * 0.6, -Math.PI / 4, Math.PI / 4 * progress);
+        ctx.stroke();
+
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
     }
 
     ctx.restore();
@@ -723,6 +974,46 @@ function createJumpSound() {
     
     osc.start(now);
     osc.stop(now + 0.1);
+}
+
+function createSlashSound() {
+    const now = audioCtx.currentTime;
+    // Swoosh — descending noise burst
+    const bufferSize = audioCtx.sampleRate * 0.12;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    }
+    const src = audioCtx.createBufferSource();
+    src.buffer = buffer;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(3000, now);
+    filter.frequency.exponentialRampToValueAtTime(800, now + 0.12);
+    filter.Q.value = 0.8;
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.35, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioCtx.destination);
+    src.start(now);
+}
+
+function createHitSound() {
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(220, now);
+    osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
+    gain.gain.setValueAtTime(0.4, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.15);
 }
 
 function createBackgroundMusic() {
@@ -784,6 +1075,7 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => { keys[e.key] = false; });
 
 function doJump() { jumpReq = true; }
+function doSlash() { slashReq = true; }
 
 // Touch swipe
 let touchX0 = 0;

@@ -1069,10 +1069,15 @@ function loop(ts) {
 
 // ── CONTROLS ─────────────────────────────────────────────
 document.addEventListener('keydown', e => {
-    keys[e.key] = true;
     if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'x', 'f', 'z'].includes(e.key)) {
         e.preventDefault();
     }
+    // Space / Enter advance menu screens
+    if (e.key === ' ' || e.key === 'Enter') {
+        if (gameState === 'idle') { startGame(); return; }
+        if (gameState === 'over' || gameState === 'won') { restartGame(); return; }
+    }
+    keys[e.key] = true;
     if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') jumpReq = true;
     if (e.key === 'x' || e.key === 'f' || e.key === 'z') slashReq = true;
 }, { capture: true });

@@ -1099,15 +1099,13 @@ document.addEventListener('touchmove', e => {
 document.addEventListener('touchend', () => { mkeys.left = false; mkeys.right = false; });
 
 function startGame() {
-    if (!allLoaded()) {
-        document.getElementById('btitle').textContent = "Loading...";
-        return;
-    }
+    // Resume AudioContext if suspended (browser autoplay policy)
+    if (audioCtx.state === 'suspended') audioCtx.resume();
     document.getElementById('scr-start').classList.add('off');
     document.getElementById('game-wrap').style.display = 'block';
     gameState = 'playing';
     initLevel(0);
-    startBackgroundMusic(); // Start background music
+    startBackgroundMusic();
     raf = requestAnimationFrame(loop);
 }
 

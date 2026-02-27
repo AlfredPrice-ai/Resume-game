@@ -100,8 +100,8 @@ const LEVELS = [
         ]
     },
     {
-        name: "EDUCATION & SKILLS",
-        sub: "VCU Da Vinci · Randolph-Macon · Certified",
+        name: "BOSS: MANY HATS",
+        sub: "Defeat the boss to complete Alfred's journey!",
         sky: ['#0a2040', '#1a4060'],
         ground: '#0077b5', gTop: '#0099e0', pipe: '#00aaff',
         facts: [
@@ -136,9 +136,13 @@ let animT = 0, animF = 0;
 let showFact = false, transitioning = false;
 let jumpReq = false;
 
-// Sword state
+// Attack state (punch/kick)
 let sword = { active: false, timer: 0, cooldown: 0 };
 let slashReq = false;
+
+// Boss state
+let boss = null;
+let bossHats = [];
 
 // Sprite animation map
 const ANIM = {
@@ -360,6 +364,25 @@ function initLevel(idx) {
     // End of Level Goal
     flagpole = { x: 2980, y: GY - 34, w: 52, h: 52 };
 
+    // Boss "Many Hats" on level 4 (index 3)
+    if (idx === 3) {
+        boss = {
+            x: 2700, y: GY - 100,
+            w: 80, h: 100,
+            hp: 10, maxHp: 10,
+            vx: 0,
+            phase: 0,
+            hatTimer: 0,
+            hurtTimer: 0,
+            alive: true
+        };
+        bossHats = [];
+        flagpole.x = 3100; // Move goal past boss arena
+    } else {
+        boss = null;
+        bossHats = [];
+    }
+
     particles = [];
     totalFacts = 0;
 
@@ -561,8 +584,86 @@ function update() {
         }
     }
 
+    // ── BOSS "MANY HATS" ──
+    if (boss && boss.alive) {
+        // Boss AI - move toward player slowly
+        const bossSpeed = 0.8 + boss.phase * 0.3;
+        if (player.x < boss.x) boss.vx = -bossSpeed;
+        else boss.vx = bossSpeed;
+        boss.x += boss.vx;
+
+        // Keep boss in arena
+        if (boss.x < 2500) boss.x = 2500;
+        if (boss.x > 3000) boss.x = 3000;
+
+        // Shoot hats
+        boss.hatTimer--;
+        if (boss.hatTimer <= 0) {
+            const hatSpeed = 4 + boss.phase;
+            const dx = player.x - boss.x;
+            const dy = player.y - boss.y;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+            bossHats.push({
+                x: boss.x + boss.w / 2 - 15,
+                y: boss.y,
+                w: 30, h: 20,
+                vx: (dx / dist) * hatSpeed,
+                vy: (dy / dist) * hatSpeed,
+                spin: 0
+            });
+            boss.hatTimer = 80 - boss.phase * 15;
+        }
+
+        // Update hats
+        for (let i = bossHats.length - 1; i >= 0; i--) {
+            const h = bossHats[i];
+            h.x += h.vx;
+            h.y += h.vy;
+            h.spin += 0.3;
+            // Hat hits player
+            if (player.invincible === 0 && overlap(player, h)) {
+                loseLife();
+                bossHats.splice(i, 1);
+                continue;
+            }
+            // Hat out of bounds
+            if (h.x < camera.x - 50 || h.x > camera.x + W + 50 || h.y > H + 50) {
+                bossHats.splice(i, 1);
+            }
+        }
+
+        // Player attacks boss
+        if (sword.active && sword.timer > 8) {
+            const atkBox = {
+                x: player.facing === 1 ? player.x + player.w : player.x - 40,
+                y: player.y,
+                w: 50, h: player.h
+            };
+            if (overlap(atkBox, boss) && boss.hurtTimer <= 0) {
+                boss.hp--;
+                boss.hurtTimer = 30;
+                boss.phase = Math.floor((boss.maxHp - boss.hp) / 3);
+                spawnParts(boss.x + boss.w / 2, boss.y + 20, '#f7c948', 15);
+                createHitSound();
+                if (boss.hp <= 0) {
+                    boss.alive = false;
+                    spawnParts(boss.x + boss.w / 2, boss.y + boss.h / 2, '#ff6b6b', 40);
+                    spawnParts(boss.x + boss.w / 2, boss.y + boss.h / 2, '#f7c948', 30);
+                    bossHats = [];
+                }
+            }
+        }
+        if (boss.hurtTimer > 0) boss.hurtTimer--;
+
+        // Boss touches player
+        if (player.invincible === 0 && overlap(player, boss)) {
+            loseLife(); return;
+        }
+    }
+
     // Reach Percy to win the level!
-    if (player.x + player.w > flagpole.x && player.x < flagpole.x + flagpole.w) {
+    const canWin = !boss || !boss.alive;
+    if (canWin && player.x + player.w > flagpole.x && player.x < flagpole.x + flagpole.w) {
         levelWin(); return;
     }
 
@@ -857,6 +958,86 @@ function draw() {
         ctx.restore();
     }
 
+    // ── BOSS "MANY HATS" ──
+    if (boss && boss.alive) {
+        const bx = boss.x, by = boss.y, bw = boss.w, bh = boss.h;
+        const hurt = boss.hurtTimer > 0 && boss.hurtTimer % 4 < 2;
+        
+        ctx.save();
+        if (hurt) ctx.globalAlpha = 0.6;
+        
+        // Body - tall figure in suit
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(bx + 10, by + 30, bw - 20, bh - 30);
+        
+        // Suit highlights
+        ctx.fillStyle = '#2d2d44';
+        ctx.fillRect(bx + 15, by + 35, 10, bh - 40);
+        ctx.fillRect(bx + bw - 25, by + 35, 10, bh - 40);
+        
+        // Head
+        ctx.fillStyle = '#d4a56a';
+        ctx.fillRect(bx + 20, by + 5, bw - 40, 30);
+        
+        // Eyes - menacing
+        ctx.fillStyle = '#ff3d00';
+        ctx.fillRect(bx + 28, by + 14, 8, 8);
+        ctx.fillRect(bx + bw - 36, by + 14, 8, 8);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(bx + 30, by + 16, 4, 4);
+        ctx.fillRect(bx + bw - 34, by + 16, 4, 4);
+        
+        // Mouth - evil grin
+        ctx.fillStyle = '#000';
+        ctx.fillRect(bx + 30, by + 26, bw - 60, 4);
+        
+        // Stack of hats on head!
+        const hatColors = ['#1a0d00', '#333', '#4a3728', '#222', '#5c4033'];
+        for (let i = 0; i < 3 + boss.phase; i++) {
+            const hatY = by - 10 - i * 12;
+            const hatColor = hatColors[i % hatColors.length];
+            ctx.fillStyle = hatColor;
+            ctx.fillRect(bx + 10, hatY, bw - 20, 10);
+            ctx.fillRect(bx + 15, hatY - 8, bw - 30, 10);
+        }
+        
+        // Arms
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(bx - 10, by + 40, 20, 40);
+        ctx.fillRect(bx + bw - 10, by + 40, 20, 40);
+        
+        // Hands
+        ctx.fillStyle = '#d4a56a';
+        ctx.fillRect(bx - 8, by + 75, 16, 12);
+        ctx.fillRect(bx + bw - 8, by + 75, 16, 12);
+        
+        ctx.restore();
+        
+        // Health bar
+        const hbW = 100, hbH = 10;
+        const hbX = bx + bw / 2 - hbW / 2;
+        const hbY = by - 40 - boss.phase * 12;
+        ctx.fillStyle = '#333';
+        ctx.fillRect(hbX - 2, hbY - 2, hbW + 4, hbH + 4);
+        ctx.fillStyle = '#ff3d00';
+        ctx.fillRect(hbX, hbY, hbW * (boss.hp / boss.maxHp), hbH);
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('MANY HATS', bx + bw / 2, hbY - 6);
+    }
+
+    // Draw boss hats (projectiles)
+    for (const h of bossHats) {
+        ctx.save();
+        ctx.translate(h.x + h.w / 2, h.y + h.h / 2);
+        ctx.rotate(h.spin);
+        ctx.fillStyle = '#1a0d00';
+        ctx.fillRect(-h.w / 2, -h.h / 2, h.w, h.h * 0.6);
+        ctx.fillRect(-h.w / 2 + 4, -h.h / 2 - 6, h.w - 8, h.h * 0.5);
+        ctx.restore();
+    }
+
     // Flagpole / Percy to rescue
     {
         const fp = flagpole;
@@ -899,44 +1080,24 @@ function draw() {
         drawPlayer();
     }
 
-    // Sword swing
-    if (sword.active) {
-        const progress = 1 - sword.timer / 14;
-        const alpha = sword.timer > 7 ? 1 : sword.timer / 7;
+    // Punch/Kick impact effect
+    if (sword.active && sword.timer > 8) {
+        const alpha = (sword.timer - 8) / 6;
         ctx.globalAlpha = alpha;
-
-        const bladeLen = 52;
-        const bladeW = 8;
-        const bx = player.facing === 1 ? player.x + player.w : player.x - bladeLen;
-        const by = player.y + 20;
-
-        // Blade glow
-        ctx.shadowColor = '#aad4ff';
-        ctx.shadowBlur = 14;
-
-        // Blade body
-        ctx.fillStyle = '#e8f4ff';
-        ctx.fillRect(bx, by, bladeLen, bladeW);
-
-        // Blade edge highlight
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(bx, by, bladeLen, 2);
-
-        // Handle
-        const hx = player.facing === 1 ? player.x + player.w - 10 : player.x + bladeLen - player.w + 10 - 10;
-        ctx.fillStyle = '#8B4513';
-        ctx.fillRect(player.facing === 1 ? player.x + player.w - 8 : player.x + 4, by - 6, 8, bladeW + 12);
-
-        // Slash arc particles
-        ctx.strokeStyle = 'rgba(170, 212, 255, ' + alpha + ')';
-        ctx.lineWidth = 3;
-        ctx.shadowBlur = 0;
+        const impactX = player.facing === 1 ? player.x + player.w + 20 : player.x - 30;
+        const impactY = player.y + 20;
+        
+        // Impact burst
+        ctx.fillStyle = '#ffcc00';
         ctx.beginPath();
-        const arcX = player.facing === 1 ? player.x + player.w : player.x;
-        ctx.arc(arcX, by + bladeW / 2, bladeLen * 0.6, -Math.PI / 4, Math.PI / 4 * progress);
-        ctx.stroke();
-
-        ctx.shadowBlur = 0;
+        for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2;
+            const r1 = 8, r2 = 18;
+            ctx.lineTo(impactX + Math.cos(angle) * r1, impactY + Math.sin(angle) * r1);
+            ctx.lineTo(impactX + Math.cos(angle + Math.PI / 6) * r2, impactY + Math.sin(angle + Math.PI / 6) * r2);
+        }
+        ctx.closePath();
+        ctx.fill();
         ctx.globalAlpha = 1;
     }
 
@@ -945,7 +1106,7 @@ function draw() {
 
 function drawPlayer() {
     const frame = getFrame(player.state);
-    const dw = 72, dh = 88;
+    const dw = 52, dh = 80; // Thinner character
 
     ctx.save();
     ctx.translate(player.x + player.w / 2, player.y + player.h / 2);
@@ -954,12 +1115,33 @@ function drawPlayer() {
     if (frame && frame.complete && frame.naturalWidth > 0) {
         ctx.drawImage(frame, -dw / 2, -dh / 2, dw, dh);
     } else {
-        // Pixel fallback
-        ctx.fillStyle = '#c8763a'; ctx.fillRect(-14, -28, 28, 26);
-        ctx.fillStyle = '#1a0d00'; ctx.fillRect(-16, -46, 32, 20);
-        ctx.fillStyle = '#d4a56a'; ctx.fillRect(-14, -4, 28, 22);
-        ctx.fillStyle = '#1a1a4e'; ctx.fillRect(-14, 18, 28, 22);
+        // Pixel fallback - thinner body
+        ctx.fillStyle = '#c8763a'; ctx.fillRect(-10, -26, 20, 22);
+        ctx.fillStyle = '#1a0d00'; ctx.fillRect(-12, -42, 24, 18);
+        ctx.fillStyle = '#d4a56a'; ctx.fillRect(-10, -4, 20, 18);
+        ctx.fillStyle = '#1a1a4e'; ctx.fillRect(-10, 14, 20, 18);
     }
+
+    // Draw punch/kick if attacking
+    if (sword.active) {
+        const progress = sword.timer / 14;
+        const kickOrPunch = Math.floor(animT * 8) % 2 === 0;
+        
+        if (kickOrPunch) {
+            // Punch - arm extends
+            ctx.fillStyle = '#d4a56a'; // Skin tone
+            ctx.fillRect(10, -8, 28 * (1 - progress), 10);
+            ctx.fillStyle = '#ff6b6b'; // Fist glow
+            ctx.fillRect(10 + 20 * (1 - progress), -10, 14, 14);
+        } else {
+            // Kick - leg extends
+            ctx.fillStyle = '#1a1a4e'; // Pants
+            ctx.fillRect(8, 20, 26 * (1 - progress), 8);
+            ctx.fillStyle = '#333'; // Shoe
+            ctx.fillRect(8 + 18 * (1 - progress), 18, 12, 12);
+        }
+    }
+
     ctx.restore();
 }
 

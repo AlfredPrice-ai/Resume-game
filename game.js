@@ -109,9 +109,16 @@ const LEVELS = [
 ];
 
 // ── ENGINE ───────────────────────────────────────────────
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-const W = canvas.width, H = canvas.height;
+let canvas, ctx, W, H;
+function initCanvas() {
+    canvas = document.getElementById('canvas');
+    if (canvas) {
+        ctx = canvas.getContext('2d');
+        W = canvas.width;
+        H = canvas.height;
+    }
+}
+initCanvas();
 
 let gameState = 'idle';
 let lvlIdx = 0, lives = 3, totalFacts = 0;

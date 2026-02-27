@@ -958,9 +958,15 @@ function shiftColor(hex, amt) {
 }
 
 // ── AUDIO ───────────────────────────────────────────────
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let audioCtx = null;
+try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+} catch (e) {
+    console.warn("[v0] AudioContext not available:", e);
+}
 
 function createJumpSound() {
+    if (!audioCtx) return;
     const now = audioCtx.currentTime;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
@@ -977,6 +983,7 @@ function createJumpSound() {
 }
 
 function createSlashSound() {
+    if (!audioCtx) return;
     const now = audioCtx.currentTime;
     // Swoosh — descending noise burst
     const bufferSize = audioCtx.sampleRate * 0.12;
@@ -1002,6 +1009,7 @@ function createSlashSound() {
 }
 
 function createHitSound() {
+    if (!audioCtx) return;
     const now = audioCtx.currentTime;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
@@ -1017,6 +1025,7 @@ function createHitSound() {
 }
 
 function createBackgroundMusic() {
+    if (!audioCtx) return;
     const now = audioCtx.currentTime;
     const notes = [330, 330, 330, 262, 330, 392, 196]; // Simple 8-bit melody
     let time = now;
@@ -1099,22 +1108,14 @@ document.addEventListener('touchmove', e => {
 document.addEventListener('touchend', () => { mkeys.left = false; mkeys.right = false; });
 
 function startGame() {
-    console.log("[v0] startGame called, gameState:", gameState);
     // Resume AudioContext if suspended (browser autoplay policy)
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    const scrStart = document.getElementById('scr-start');
-    const gameWrap = document.getElementById('game-wrap');
-    console.log("[v0] scr-start element:", scrStart);
-    console.log("[v0] game-wrap element:", gameWrap);
-    if (scrStart) scrStart.classList.add('off');
-    if (gameWrap) gameWrap.style.display = 'block';
-    console.log("[v0] scr-start classes after:", scrStart?.classList.toString());
-    console.log("[v0] game-wrap display after:", gameWrap?.style.display);
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    document.getElementById('scr-start').classList.add('off');
+    document.getElementById('game-wrap').style.display = 'block';
     gameState = 'playing';
     initLevel(0);
     startBackgroundMusic();
     raf = requestAnimationFrame(loop);
-    console.log("[v0] startGame complete, gameState:", gameState);
 }
 
 function restartGame() {

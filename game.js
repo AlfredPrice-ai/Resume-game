@@ -788,14 +788,15 @@ function levelWin() {
     transitioning = true;
     showingPercyFact = true;
     player.state = 'celebrate';
+    console.log("[v0] levelWin called, lvlIdx:", lvlIdx);
     
     // Spawn hearts and stars around Percy
     for (let i = 0; i < 15; i++) {
         setTimeout(() => {
             spawnParts(flagpole.x + flagpole.w / 2 + (Math.random() - 0.5) * 60, 
-                       flagpole.y + (Math.random() - 0.5) * 40, '#ff6b9d', 3); // Hearts (pink)
+                       flagpole.y + (Math.random() - 0.5) * 40, '#ff6b9d', 3);
             spawnParts(flagpole.x + flagpole.w / 2 + (Math.random() - 0.5) * 60, 
-                       flagpole.y + (Math.random() - 0.5) * 40, '#f7c948', 3); // Stars (gold)
+                       flagpole.y + (Math.random() - 0.5) * 40, '#f7c948', 3);
         }, i * 100);
     }
     spawnParts(player.x + player.w / 2, player.y, '#f7c948', 30);
@@ -803,30 +804,33 @@ function levelWin() {
 
     // Show Percy's fact
     const popup = document.getElementById('popup');
-    const ptitle = popup.querySelector('.ptitle');
-    const pbody = popup.querySelector('.pbody');
-    ptitle.textContent = "PERCY SAYS:";
-    pbody.textContent = PERCY_FACTS[lvlIdx] || "Alfred is awesome!";
-    popup.classList.add('on');
+    if (popup) {
+        const ptitle = popup.querySelector('.ptitle');
+        const pbody = popup.querySelector('.pbody');
+        if (ptitle) ptitle.textContent = "PERCY SAYS:";
+        if (pbody) pbody.textContent = PERCY_FACTS[lvlIdx] || "Alfred is awesome!";
+        popup.classList.add('on');
+    }
 
     // Wait 10 seconds then advance
     setTimeout(() => {
-        popup.classList.remove('on');
+        console.log("[v0] 10 seconds passed, advancing...");
+        if (popup) popup.classList.remove('on');
         showingPercyFact = false;
         
-        setTimeout(() => {
-            if (lvlIdx >= LEVELS.length - 1) {
-                gameState = 'won';
-                stopBackgroundMusic();
-                document.getElementById('game-wrap').style.display = 'none';
-                document.getElementById('win-stats').textContent =
-                    `${totalFacts} facts collected across ${LEVELS.length} levels!`;
-                document.getElementById('scr-win').classList.remove('off');
-            } else {
-                initLevel(lvlIdx + 1);
-            }
-        }, 500);
-    }, 10000); // 10 seconds to show Percy's fact
+        if (lvlIdx >= LEVELS.length - 1) {
+            console.log("[v0] Game won!");
+            gameState = 'won';
+            stopBackgroundMusic();
+            document.getElementById('game-wrap').style.display = 'none';
+            document.getElementById('win-stats').textContent =
+                `${totalFacts} facts collected across ${LEVELS.length} levels!`;
+            document.getElementById('scr-win').classList.remove('off');
+        } else {
+            console.log("[v0] Moving to level:", lvlIdx + 1);
+            initLevel(lvlIdx + 1);
+        }
+    }, 10000);
 }
 
 // ── DRAW ─────────────────────────────────────────────────

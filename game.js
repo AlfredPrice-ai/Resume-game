@@ -1099,14 +1099,22 @@ document.addEventListener('touchmove', e => {
 document.addEventListener('touchend', () => { mkeys.left = false; mkeys.right = false; });
 
 function startGame() {
+    console.log("[v0] startGame called, gameState:", gameState);
     // Resume AudioContext if suspended (browser autoplay policy)
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    document.getElementById('scr-start').classList.add('off');
-    document.getElementById('game-wrap').style.display = 'block';
+    const scrStart = document.getElementById('scr-start');
+    const gameWrap = document.getElementById('game-wrap');
+    console.log("[v0] scr-start element:", scrStart);
+    console.log("[v0] game-wrap element:", gameWrap);
+    if (scrStart) scrStart.classList.add('off');
+    if (gameWrap) gameWrap.style.display = 'block';
+    console.log("[v0] scr-start classes after:", scrStart?.classList.toString());
+    console.log("[v0] game-wrap display after:", gameWrap?.style.display);
     gameState = 'playing';
     initLevel(0);
     startBackgroundMusic();
     raf = requestAnimationFrame(loop);
+    console.log("[v0] startGame complete, gameState:", gameState);
 }
 
 function restartGame() {

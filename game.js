@@ -771,44 +771,6 @@ function draw() {
             // Eye
             ctx.fillStyle = '#ffcc00';
             ctx.fillRect(-4, -2, 4, 4);
-        } else {
-            // CRAB enemy — pixel art style
-            // Body (oval-ish rectangle)
-            ctx.fillStyle = '#dd3300';
-            ctx.fillRect(cx2 + 4, cy2 + ch * 0.3, cw - 8, ch * 0.55);
-            // Shell highlight
-            ctx.fillStyle = '#ff5522';
-            ctx.fillRect(cx2 + 6, cy2 + ch * 0.32, cw - 12, ch * 0.15);
-            // Left claw
-            ctx.fillStyle = '#cc2200';
-            ctx.fillRect(cx2 - 8, cy2 + ch * 0.3, 10, 8); // arm
-            ctx.fillRect(cx2 - 12, cy2 + ch * 0.2, 10, 12); // claw
-            ctx.fillRect(cx2 - 12, cy2 + ch * 0.35, 10, 8); // lower claw
-            // Right claw
-            ctx.fillRect(cx2 + cw - 2, cy2 + ch * 0.3, 10, 8); // arm
-            ctx.fillRect(cx2 + cw + 2, cy2 + ch * 0.2, 10, 12); // claw
-            ctx.fillRect(cx2 + cw + 2, cy2 + ch * 0.35, 10, 8); // lower claw
-            // Legs (3 per side)
-            ctx.fillStyle = '#bb2200';
-            for (let l = 0; l < 3; l++) {
-                ctx.fillRect(cx2 + 4 + l * 7, cy2 + ch * 0.8, 4, 10); // left legs
-                ctx.fillRect(cx2 + cw - 10 + l * 2, cy2 + ch * 0.8, 4, 10); // right legs
-            }
-            // Eyes on stalks
-            ctx.fillStyle = '#cc2200';
-            ctx.fillRect(cx2 + 6, cy2 + ch * 0.1, 5, 14); // left stalk
-            ctx.fillRect(cx2 + cw - 11, cy2 + ch * 0.1, 5, 14); // right stalk
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath(); ctx.arc(cx2 + 8, cy2 + ch * 0.12, 5, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(cx2 + cw - 8, cy2 + ch * 0.12, 5, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#000000';
-            ctx.beginPath(); ctx.arc(cx2 + 9, cy2 + ch * 0.12, 2.5, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(cx2 + cw - 9, cy2 + ch * 0.12, 2.5, 0, Math.PI * 2); ctx.fill();
-            // Angry brow slant
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(cx2 + 4, cy2 + ch * 0.05); ctx.lineTo(cx2 + 14, cy2 + ch * 0.1); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(cx2 + cw - 4, cy2 + ch * 0.05); ctx.lineTo(cx2 + cw - 14, cy2 + ch * 0.1); ctx.stroke();
         } else if (e.type === 'ogre') {
             // BIG OGRE — pixel art chunky green monster
             const hp = e.hp || 1;
@@ -847,6 +809,44 @@ function draw() {
                 ctx.fillStyle = pip === 0 ? '#ff3d00' : '#ffb300';
                 ctx.fillRect(cx2 + 4 + pip * 12, cy2 - 20, 9, 6);
             }
+        } else {
+            // CRAB enemy — pixel art style
+            // Body (oval-ish rectangle)
+            ctx.fillStyle = '#dd3300';
+            ctx.fillRect(cx2 + 4, cy2 + ch * 0.3, cw - 8, ch * 0.55);
+            // Shell highlight
+            ctx.fillStyle = '#ff5522';
+            ctx.fillRect(cx2 + 6, cy2 + ch * 0.32, cw - 12, ch * 0.15);
+            // Left claw
+            ctx.fillStyle = '#cc2200';
+            ctx.fillRect(cx2 - 8, cy2 + ch * 0.3, 10, 8);
+            ctx.fillRect(cx2 - 12, cy2 + ch * 0.2, 10, 12);
+            ctx.fillRect(cx2 - 12, cy2 + ch * 0.35, 10, 8);
+            // Right claw
+            ctx.fillRect(cx2 + cw - 2, cy2 + ch * 0.3, 10, 8);
+            ctx.fillRect(cx2 + cw + 2, cy2 + ch * 0.2, 10, 12);
+            ctx.fillRect(cx2 + cw + 2, cy2 + ch * 0.35, 10, 8);
+            // Legs (3 per side)
+            ctx.fillStyle = '#bb2200';
+            for (let l = 0; l < 3; l++) {
+                ctx.fillRect(cx2 + 4 + l * 7, cy2 + ch * 0.8, 4, 10);
+                ctx.fillRect(cx2 + cw - 10 + l * 2, cy2 + ch * 0.8, 4, 10);
+            }
+            // Eyes on stalks
+            ctx.fillStyle = '#cc2200';
+            ctx.fillRect(cx2 + 6, cy2 + ch * 0.1, 5, 14);
+            ctx.fillRect(cx2 + cw - 11, cy2 + ch * 0.1, 5, 14);
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(cx2 + 8, cy2 + ch * 0.12, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(cx2 + cw - 8, cy2 + ch * 0.12, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#000000';
+            ctx.beginPath(); ctx.arc(cx2 + 9, cy2 + ch * 0.12, 2.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(cx2 + cw - 9, cy2 + ch * 0.12, 2.5, 0, Math.PI * 2); ctx.fill();
+            // Angry brow slant
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(cx2 + 4, cy2 + ch * 0.05); ctx.lineTo(cx2 + 14, cy2 + ch * 0.1); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(cx2 + cw - 4, cy2 + ch * 0.05); ctx.lineTo(cx2 + cw - 14, cy2 + ch * 0.1); ctx.stroke();
         }
         ctx.restore();
     }

@@ -58,11 +58,18 @@ imgKeys.forEach(k => {
 
 function allLoaded() { return imgKeys.length === 0 || imgsLoaded >= imgKeys.length; }
 
-// Load punch/kick sprites
+// Load punch/kick sprites (served from public folder as /punch.png)
 const punchImg = new Image();
-punchImg.src = '/punch.png';
+punchImg.src = 'punch.png';
+punchImg.onerror = () => console.log('[v0] Failed to load punch.png');
+punchImg.onload = () => console.log('[v0] Loaded punch.png');
 const kickImg = new Image();
-kickImg.src = '/kick.png';
+kickImg.src = 'kick.png';
+kickImg.onerror = () => console.log('[v0] Failed to load kick.png');
+kickImg.onload = () => console.log('[v0] Loaded kick.png');
+
+// Track which attack to use (alternates)
+let lastAttackWasKick = false;
 
 // ── RESUME DATA ──────────────────────────────────────────
 const LEVELS = [
@@ -461,12 +468,13 @@ function update() {
     jumpReq = false;
     slashReq = false;
 
-    // Sword swing
+    // Punch/Kick attack
     if (sword.cooldown > 0) sword.cooldown--;
     if (slash && !sword.active && sword.cooldown === 0) {
         sword.active = true;
         sword.timer = 14;
         sword.cooldown = 22;
+        lastAttackWasKick = !lastAttackWasKick; // Alternate between punch and kick
         createSlashSound();
     }
     if (sword.active) {
@@ -1133,8 +1141,7 @@ function draw() {
 }
 
 function drawPlayer() {
-    const dw = 52, dh = 80;
-    const attackDw = 70, attackDh = 85; // Larger for attack sprites
+    const dw = 52, dh = 80; // Same size for all sprites
 
     ctx.save();
     ctx.translate(player.x + player.w / 2, player.y + player.h / 2);
@@ -1142,12 +1149,12 @@ function drawPlayer() {
 
     // Draw punch/kick sprite if attacking, otherwise normal frame
     if (sword.active) {
-        const useKick = Math.floor(animT * 6) % 2 === 0;
-        const atkSprite = useKick ? kickImg : punchImg;
+        // Use the alternating attack sprite
+        const atkSprite = lastAttackWasKick ? kickImg : punchImg;
         if (atkSprite && atkSprite.complete && atkSprite.naturalWidth > 0) {
-            ctx.drawImage(atkSprite, -attackDw / 2, -attackDh / 2, attackDw, attackDh);
+            ctx.drawImage(atkSprite, -dw / 2, -dh / 2, dw, dh);
         } else {
-            // Fallback
+            // Fallback pixel art
             ctx.fillStyle = '#c8763a'; ctx.fillRect(-10, -26, 20, 22);
             ctx.fillStyle = '#1a0d00'; ctx.fillRect(-12, -42, 24, 18);
             ctx.fillStyle = '#d4a56a'; ctx.fillRect(-10, -4, 20, 18);

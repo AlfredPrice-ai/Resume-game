@@ -1,6 +1,12 @@
 // ── SPRITES ─────────────────────────────────────────────
 // Loaded from sprites.js
 
+// Safety check - ensure SPRITES is defined
+if (typeof SPRITES === 'undefined') {
+    console.error('[v0] SPRITES not defined - sprites.js may have failed to load');
+    window.SPRITES = {};
+}
+
 const imgs = {};
 let imgsLoaded = 0;
 const imgKeys = Object.keys(SPRITES);
@@ -1131,3 +1137,10 @@ function restartGame() {
     lives = 3; totalFacts = 0;
     startGame();
 }
+
+// Export to window for onclick handlers
+window.startGame = startGame;
+window.restartGame = restartGame;
+window.doJump = doJump;
+window.doSlash = doSlash;
+window.mkeys = mkeys;

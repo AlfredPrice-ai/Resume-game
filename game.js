@@ -58,15 +58,37 @@ imgKeys.forEach(k => {
 
 function allLoaded() { return imgKeys.length === 0 || imgsLoaded >= imgKeys.length; }
 
-// Load punch/kick sprites (served from public folder as /punch.png)
-const punchImg = new Image();
-punchImg.src = 'punch.png';
-punchImg.onerror = () => console.log('[v0] Failed to load punch.png');
-punchImg.onload = () => console.log('[v0] Loaded punch.png');
-const kickImg = new Image();
-kickImg.src = 'kick.png';
-kickImg.onerror = () => console.log('[v0] Failed to load kick.png');
-kickImg.onload = () => console.log('[v0] Loaded kick.png');
+// Remove white background from image at runtime
+function removeWhiteBg(img) {
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth;
+    c.height = img.naturalHeight;
+    const cx = c.getContext('2d');
+    cx.drawImage(img, 0, 0);
+    const imageData = cx.getImageData(0, 0, c.width, c.height);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+        if (data[i] > 240 && data[i+1] > 240 && data[i+2] > 240) {
+            data[i+3] = 0; // Make white transparent
+        }
+    }
+    cx.putImageData(imageData, 0, 0);
+    const newImg = new Image();
+    newImg.src = c.toDataURL();
+    return newImg;
+}
+
+// Load punch/kick sprites and remove white background
+let punchImg = new Image();
+let kickImg = new Image();
+const punchRaw = new Image();
+punchRaw.crossOrigin = 'anonymous';
+punchRaw.src = 'punch.png';
+punchRaw.onload = () => { punchImg = removeWhiteBg(punchRaw); };
+const kickRaw = new Image();
+kickRaw.crossOrigin = 'anonymous';
+kickRaw.src = 'kick.png';
+kickRaw.onload = () => { kickImg = removeWhiteBg(kickRaw); };
 
 // Track which attack to use (alternates)
 let lastAttackWasKick = false;
@@ -750,25 +772,61 @@ function loseLife() {
     }
 }
 
+// Percy's personal facts for each level
+const PERCY_FACTS = [
+    "Alfred loves sushi!",
+    "Alfred loves comic books!",
+    "Alfred loves his wife MC!",
+    "Alfred loves strength training!"
+];
+
+let percyAnimTimer = 0;
+let showingPercyFact = false;
+
 function levelWin() {
     if (transitioning) return;
     transitioning = true;
+    showingPercyFact = true;
     player.state = 'celebrate';
+    
+    // Spawn hearts and stars around Percy
+    for (let i = 0; i < 15; i++) {
+        setTimeout(() => {
+            spawnParts(flagpole.x + flagpole.w / 2 + (Math.random() - 0.5) * 60, 
+                       flagpole.y + (Math.random() - 0.5) * 40, '#ff6b9d', 3); // Hearts (pink)
+            spawnParts(flagpole.x + flagpole.w / 2 + (Math.random() - 0.5) * 60, 
+                       flagpole.y + (Math.random() - 0.5) * 40, '#f7c948', 3); // Stars (gold)
+        }, i * 100);
+    }
     spawnParts(player.x + player.w / 2, player.y, '#f7c948', 30);
     spawnParts(player.x + player.w / 2, player.y, '#4cc9f0', 20);
 
+    // Show Percy's fact
+    const popup = document.getElementById('popup');
+    const ptitle = popup.querySelector('.ptitle');
+    const pbody = popup.querySelector('.pbody');
+    ptitle.textContent = "PERCY SAYS:";
+    pbody.textContent = PERCY_FACTS[lvlIdx] || "Alfred is awesome!";
+    popup.classList.add('on');
+
+    // Wait 10 seconds then advance
     setTimeout(() => {
-        if (lvlIdx >= LEVELS.length - 1) {
-            gameState = 'won';
-            stopBackgroundMusic();
-            document.getElementById('game-wrap').style.display = 'none';
-            document.getElementById('win-stats').textContent =
-                `${totalFacts} facts collected across ${LEVELS.length} levels!`;
-            document.getElementById('scr-win').classList.remove('off');
-        } else {
-            initLevel(lvlIdx + 1);
-        }
-    }, 1800);
+        popup.classList.remove('on');
+        showingPercyFact = false;
+        
+        setTimeout(() => {
+            if (lvlIdx >= LEVELS.length - 1) {
+                gameState = 'won';
+                stopBackgroundMusic();
+                document.getElementById('game-wrap').style.display = 'none';
+                document.getElementById('win-stats').textContent =
+                    `${totalFacts} facts collected across ${LEVELS.length} levels!`;
+                document.getElementById('scr-win').classList.remove('off');
+            } else {
+                initLevel(lvlIdx + 1);
+            }
+        }, 500);
+    }, 10000); // 10 seconds to show Percy's fact
 }
 
 // ── DRAW ─────────────────────────────────────────────────
@@ -1107,7 +1165,37 @@ function draw() {
     for (const p of particles) {
         ctx.globalAlpha = p.life / 50;
         ctx.fillStyle = p.color;
-        ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
+        
+        // Draw hearts for pink particles during Percy celebration
+        if (p.color === '#ff6b9d' && showingPercyFact) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.beginPath();
+            ctx.moveTo(0, 2);
+            ctx.bezierCurveTo(-4, -2, -8, 2, 0, 8);
+            ctx.bezierCurveTo(8, 2, 4, -2, 0, 2);
+            ctx.fill();
+            ctx.restore();
+        }
+        // Draw stars for gold particles during Percy celebration
+        else if (p.color === '#f7c948' && showingPercyFact) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                const angle = (i * 4 * Math.PI / 5) - Math.PI / 2;
+                const r = i === 0 ? 6 : 6;
+                ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
+                const innerAngle = angle + Math.PI / 5;
+                ctx.lineTo(Math.cos(innerAngle) * 3, Math.sin(innerAngle) * 3);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+        else {
+            ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
+        }
         ctx.globalAlpha = 1;
     }
 

@@ -1,12 +1,16 @@
 import sharp from 'sharp';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'fs';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const rootDir = path.join(__dirname, '..');
+const punchUrl = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/sheet1_sprite_22-UJ9ktjqSZ6sVWUTYkkwZZXjzTiEpEa.png';
+const kickUrl = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/sheet1_sprite_21-aJvVqlB82Tlquk5vQinXCNag8q5ank.png';
 
-async function removeWhiteBackground(inputPath, outputPath) {
-    const image = sharp(inputPath);
+async function removeWhiteBackground(imageUrl, outputPath) {
+    // Fetch image from URL
+    const response = await fetch(imageUrl);
+    const arrayBuffer = await response.arrayBuffer();
+    const inputBuffer = Buffer.from(arrayBuffer);
+    
+    const image = sharp(inputBuffer);
     const { data, info } = await image.raw().ensureAlpha().toBuffer({ resolveWithObject: true });
     
     const pixels = new Uint8Array(data);
@@ -23,7 +27,7 @@ async function removeWhiteBackground(inputPath, outputPath) {
         }
     }
     
-    await sharp(Buffer.from(pixels), {
+    const outputBuffer = await sharp(Buffer.from(pixels), {
         raw: {
             width: info.width,
             height: info.height,
@@ -31,22 +35,18 @@ async function removeWhiteBackground(inputPath, outputPath) {
         }
     })
     .png()
-    .toFile(outputPath);
+    .toBuffer();
     
+    fs.writeFileSync(outputPath, outputBuffer);
     console.log(`Processed: ${outputPath}`);
 }
 
 async function main() {
     try {
-        await removeWhiteBackground(
-            path.join(rootDir, 'punch.png'),
-            path.join(rootDir, 'punch.png')
-        );
-        await removeWhiteBackground(
-            path.join(rootDir, 'kick.png'),
-            path.join(rootDir, 'kick.png')
-        );
+        await removeWhiteBackground(punchUrl, './punch_transparent.png');
+        await removeWhiteBackground(kickUrl, './kick_transparent.png');
         console.log('Background removal complete!');
+        console.log('Files saved to current directory');
     } catch (err) {
         console.error('Error:', err);
     }

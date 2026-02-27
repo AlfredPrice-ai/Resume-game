@@ -58,6 +58,12 @@ imgKeys.forEach(k => {
 
 function allLoaded() { return imgKeys.length === 0 || imgsLoaded >= imgKeys.length; }
 
+// Load punch/kick sprites
+const punchImg = new Image();
+punchImg.src = '/punch.png';
+const kickImg = new Image();
+kickImg.src = '/kick.png';
+
 // ── RESUME DATA ──────────────────────────────────────────
 const LEVELS = [
     {
@@ -143,6 +149,9 @@ let slashReq = false;
 // Boss state
 let boss = null;
 let bossHats = [];
+
+// Music toggle
+let musicEnabled = true;
 
 // Sprite animation map
 const ANIM = {
@@ -558,6 +567,25 @@ function update() {
 
     for (const e of enemies) {
         if (!e.alive) continue;
+        
+        // Ground enemies (crabs, ogres) must stay on solid ground
+        if (e.type !== 'flyer') {
+            // Check if there's ground ahead before moving
+            const nextX = e.x + e.vx * 2;
+            const footY = e.y + e.h + 5;
+            let hasGround = false;
+            for (const p of platforms) {
+                if (nextX + e.w > p.x && nextX < p.x + p.w && footY > p.y && footY < p.y + 20) {
+                    hasGround = true;
+                    break;
+                }
+            }
+            // If no ground ahead, turn around
+            if (!hasGround) {
+                e.vx *= -1;
+            }
+        }
+        
         e.x += e.vx;
         if (e.x <= e.sx || e.x >= e.sx + e.range) e.vx *= -1;
 
@@ -1105,40 +1133,36 @@ function draw() {
 }
 
 function drawPlayer() {
-    const frame = getFrame(player.state);
-    const dw = 52, dh = 80; // Thinner character
+    const dw = 52, dh = 80;
+    const attackDw = 70, attackDh = 85; // Larger for attack sprites
 
     ctx.save();
     ctx.translate(player.x + player.w / 2, player.y + player.h / 2);
     if (player.facing === -1) ctx.scale(-1, 1);
 
-    if (frame && frame.complete && frame.naturalWidth > 0) {
-        ctx.drawImage(frame, -dw / 2, -dh / 2, dw, dh);
-    } else {
-        // Pixel fallback - thinner body
-        ctx.fillStyle = '#c8763a'; ctx.fillRect(-10, -26, 20, 22);
-        ctx.fillStyle = '#1a0d00'; ctx.fillRect(-12, -42, 24, 18);
-        ctx.fillStyle = '#d4a56a'; ctx.fillRect(-10, -4, 20, 18);
-        ctx.fillStyle = '#1a1a4e'; ctx.fillRect(-10, 14, 20, 18);
-    }
-
-    // Draw punch/kick if attacking
+    // Draw punch/kick sprite if attacking, otherwise normal frame
     if (sword.active) {
-        const progress = sword.timer / 14;
-        const kickOrPunch = Math.floor(animT * 8) % 2 === 0;
-        
-        if (kickOrPunch) {
-            // Punch - arm extends
-            ctx.fillStyle = '#d4a56a'; // Skin tone
-            ctx.fillRect(10, -8, 28 * (1 - progress), 10);
-            ctx.fillStyle = '#ff6b6b'; // Fist glow
-            ctx.fillRect(10 + 20 * (1 - progress), -10, 14, 14);
+        const useKick = Math.floor(animT * 6) % 2 === 0;
+        const atkSprite = useKick ? kickImg : punchImg;
+        if (atkSprite && atkSprite.complete && atkSprite.naturalWidth > 0) {
+            ctx.drawImage(atkSprite, -attackDw / 2, -attackDh / 2, attackDw, attackDh);
         } else {
-            // Kick - leg extends
-            ctx.fillStyle = '#1a1a4e'; // Pants
-            ctx.fillRect(8, 20, 26 * (1 - progress), 8);
-            ctx.fillStyle = '#333'; // Shoe
-            ctx.fillRect(8 + 18 * (1 - progress), 18, 12, 12);
+            // Fallback
+            ctx.fillStyle = '#c8763a'; ctx.fillRect(-10, -26, 20, 22);
+            ctx.fillStyle = '#1a0d00'; ctx.fillRect(-12, -42, 24, 18);
+            ctx.fillStyle = '#d4a56a'; ctx.fillRect(-10, -4, 20, 18);
+            ctx.fillStyle = '#1a1a4e'; ctx.fillRect(-10, 14, 20, 18);
+        }
+    } else {
+        const frame = getFrame(player.state);
+        if (frame && frame.complete && frame.naturalWidth > 0) {
+            ctx.drawImage(frame, -dw / 2, -dh / 2, dw, dh);
+        } else {
+            // Pixel fallback
+            ctx.fillStyle = '#c8763a'; ctx.fillRect(-10, -26, 20, 22);
+            ctx.fillStyle = '#1a0d00'; ctx.fillRect(-12, -42, 24, 18);
+            ctx.fillStyle = '#d4a56a'; ctx.fillRect(-10, -4, 20, 18);
+            ctx.fillStyle = '#1a1a4e'; ctx.fillRect(-10, 14, 20, 18);
         }
     }
 
@@ -1244,13 +1268,13 @@ function createBackgroundMusic() {
 
 let musicPlaying = false;
 function startBackgroundMusic() {
-    if (musicPlaying) return;
+    if (musicPlaying || !musicEnabled) return;
     musicPlaying = true;
     
     const playMusicLoop = () => {
-        if (gameState === 'playing') {
+        if (gameState === 'playing' && musicEnabled) {
             createBackgroundMusic();
-            setTimeout(playMusicLoop, 2100); // Loop after melody ends
+            setTimeout(playMusicLoop, 2100);
         } else {
             musicPlaying = false;
         }
@@ -1261,6 +1285,18 @@ function startBackgroundMusic() {
 function stopBackgroundMusic() {
     musicPlaying = false;
 }
+
+function toggleMusic() {
+    musicEnabled = !musicEnabled;
+    const btn = document.getElementById('music-toggle');
+    if (btn) btn.textContent = musicEnabled ? 'MUSIC: ON' : 'MUSIC: OFF';
+    if (musicEnabled && gameState === 'playing') {
+        startBackgroundMusic();
+    } else {
+        stopBackgroundMusic();
+    }
+}
+window.toggleMusic = toggleMusic;
 
 // ── GAME LOOP ────────────────────────────────────────────
 let raf, lastT = 0;

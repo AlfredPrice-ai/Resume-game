@@ -788,7 +788,6 @@ function levelWin() {
     transitioning = true;
     showingPercyFact = true;
     player.state = 'celebrate';
-    console.log("[v0] levelWin called, lvlIdx:", lvlIdx);
     
     // Spawn hearts and stars around Percy
     for (let i = 0; i < 15; i++) {
@@ -814,12 +813,10 @@ function levelWin() {
 
     // Wait 10 seconds then advance
     setTimeout(() => {
-        console.log("[v0] 10 seconds passed, advancing...");
         if (popup) popup.classList.remove('on');
         showingPercyFact = false;
         
         if (lvlIdx >= LEVELS.length - 1) {
-            console.log("[v0] Game won!");
             gameState = 'won';
             stopBackgroundMusic();
             document.getElementById('game-wrap').style.display = 'none';
@@ -827,7 +824,6 @@ function levelWin() {
                 `${totalFacts} facts collected across ${LEVELS.length} levels!`;
             document.getElementById('scr-win').classList.remove('off');
         } else {
-            console.log("[v0] Moving to level:", lvlIdx + 1);
             initLevel(lvlIdx + 1);
         }
     }, 10000);
@@ -1438,11 +1434,15 @@ document.addEventListener('touchmove', e => {
 document.addEventListener('touchend', () => { mkeys.left = false; mkeys.right = false; });
 
 function startGame() {
+    // Cancel any existing animation frame to prevent speed-up on restart
+    if (raf) cancelAnimationFrame(raf);
+    
     // Resume AudioContext if suspended (browser autoplay policy)
     if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     document.getElementById('scr-start').classList.add('off');
     document.getElementById('game-wrap').style.display = 'block';
     gameState = 'playing';
+    lastT = 0; // Reset timing
     initLevel(0);
     startBackgroundMusic();
     raf = requestAnimationFrame(loop);
